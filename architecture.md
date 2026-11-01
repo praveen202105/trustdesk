@@ -66,3 +66,7 @@ Correlate requests, jobs and AI runs. Record sanitized error codes, latency, ret
 ## Implementation roadmap update
 
 Follow [phase progress](phase-progress.md) and [source provenance](source-provenance.md). Verified capstone requirements override earlier illustrative examples. Only refund review is executable; its payload includes amount and idempotency_key. Mock AI results do not establish live-model quality.
+
+## Live provider contract verification
+
+The compatible adapter uses Chat Completions JSON mode, validates returned triage fields with Pydantic, and permits one schema-repair attempt. JSON mode alone is not treated as schema validation. Completion output is bounded with `max_completion_tokens`; no deprecated `max_tokens` field is sent. These details were verified against the [official API reference](https://developers.openai.com/api/reference/resources/chat/subresources/completions/methods/create). No live-provider quality or account-access result is claimed. Draft prose is restricted to reviewed policy templates in V1; unreviewed paraphrases trigger human escalation.

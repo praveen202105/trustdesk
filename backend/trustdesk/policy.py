@@ -1,3 +1,4 @@
+import calendar
 import re
 from datetime import date, datetime, timedelta
 from decimal import Decimal
@@ -38,6 +39,27 @@ def return_eligible(context: dict) -> bool:
     until = date.fromisoformat(order["eligible_return_until"])
     at = datetime.fromisoformat(context["ticket"]["created_at"]).date()
     return until == delivered + timedelta(days=7) and delivered <= at <= until
+
+
+def warranty_eligible(context: dict) -> bool | None:
+    order = context.get("order")
+    if not order or not order.get("delivered_at"):
+        return None
+    items = order.get("items", [])
+    if not items or any(item.get("final_sale") or item.get("category") == "software" for item in items):
+        return False
+    if any(item.get("category") not in ("audio", "camera", "tablet", "wearable", "accessory") for item in items):
+        return None
+    months = 12
+    if (context["customer"].get("tier") == "gold" and
+            not any(item.get("category") == "accessory" and Decimal(str(order["total"])) < 3000 for item in items)):
+        months += 6
+    delivered = date.fromisoformat(order["delivered_at"])
+    absolute_month = delivered.year * 12 + delivered.month - 1 + months
+    year, month = absolute_month // 12, absolute_month % 12 + 1
+    until = date(year, month, min(delivered.day, calendar.monthrange(year, month)[1]))
+    at = datetime.fromisoformat(context["ticket"]["created_at"]).date()
+    return delivered <= at <= until
 
 
 def decision(context: dict) -> dict:
@@ -82,17 +104,27 @@ def decision(context: dict) -> dict:
         priority = "high" if stale or any(x in text for x in ("travel", "urgent")) else "medium"
         actions = ["open_carrier_investigation"] if stale else []
         template = "The next step is a carrier investigation when tracking has not moved for at least 5 business days. We cannot promise an instant refund or replacement. Lost-package resolution requires carrier confirmation or the policy's 10-business-day condition."
+    elif "warranty" in text:
+        category, priority, escalate = "warranty", "medium", True
+        doc, reason = "KB-WARRANTY-001", "Warranty review requires proof and specialist approval"
+        eligible = warranty_eligible(context)
+        if eligible is True:
+            template = "The item appears within the applicable warranty period at the ticket date. A specialist must verify proof of purchase, serial number and product photos before any replacement is approved."
+        elif eligible is False:
+            template = "The available dates or item conditions do not establish standard warranty coverage. A specialist must review any applicable exception; no replacement is approved."
+        else:
+            template = "Warranty coverage cannot be established from the available dates and item details. Please provide proof of purchase for a specialist review."
     elif any(term in text for term in ("refund", "replacement", "damaged", "cracked", "defective")):
         category, doc = "refund", "KB-REFUND-001"
         final_sale = bool(order and any(item.get("final_sale") for item in order["items"]))
         if final_sale:
             reason = "Software or marked final-sale items do not qualify for an ordinary refund"
             template = "Software licenses and marked final-sale items are final sale after purchase. I cannot approve a refund under the standard policy; any legal exception or manager-approved exception must be reviewed separately."
-        elif return_eligible(context):
+        elif return_eligible(context) and any(term in text for term in ("damaged", "cracked", "defective", "unused", "different from")):
             priority, sentiment = "medium", "frustrated"
             reason = "Damaged physical item reported within the seven-day return window"
             actions = ["create_replacement_order", "start_refund_review"]
-            template = "I am sorry your item arrived damaged. Within 7 calendar days of delivery, policy allows a replacement or refund review. Please provide a photo or short description of the damage for review. Any action requires human approval; no refund or replacement has been issued."
+            template = "I am sorry about the issue with your item. Within 7 calendar days of delivery, policy allows a replacement or refund review. Please provide a photo or short description of the damage for review. Any action requires human approval; no refund or replacement has been issued."
         else:
             priority, escalate = "medium", True
             reason = "Return eligibility is missing or outside the supported window"

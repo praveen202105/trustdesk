@@ -14,3 +14,17 @@ def test_return_boundary_is_historical_and_final_sale_is_blocked(database):
         final=context_for(session,"tkt_9003")
         assert not return_eligible(final)
         assert action_arguments(final,decision(final)) is None
+
+
+def test_gold_warranty_and_unknown_item_conditions(database):
+    from trustdesk.policy import warranty_eligible
+    with database() as session:
+        gold=context_for(session,"tkt_9004")
+        assert warranty_eligible(gold) is True
+        standard=copy.deepcopy(gold)
+        standard["customer"]["tier"]="standard"
+        assert warranty_eligible(standard) is False
+        unknown=context_for(session,"tkt_9001")
+        unknown["ticket"]={**unknown["ticket"],"subject":"Refund please","body":"Please refund my item."}
+        assert decision(unknown)["escalation_required"]
+        assert not action_arguments(unknown,decision(unknown))

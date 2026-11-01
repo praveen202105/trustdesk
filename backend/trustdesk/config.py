@@ -3,6 +3,7 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
+    database_schema: str = "public"
     database_url: str = "postgresql+psycopg://trustdesk:local-dev-only@localhost:5438/trustdesk"
     demo_login_token: str = "local-demo-only"
     session_secret: str = "local-session-secret-change-before-hosting"
