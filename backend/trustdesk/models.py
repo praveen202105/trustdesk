@@ -110,3 +110,28 @@ class MockEffect(Base):
     payload_hash: Mapped[str] = mapped_column(String)
     result: Mapped[dict[str, Any]] = mapped_column(JSONB)
     __table_args__ = (UniqueConstraint("namespace", "id"),)
+
+
+class Job(Base):
+    __tablename__ = "jobs"
+    id: Mapped[str] = mapped_column(String, primary_key=True, default=uid)
+    kind: Mapped[str] = mapped_column(String)
+    ticket_id: Mapped[str | None] = mapped_column(ForeignKey("tickets.id"), nullable=True)
+    payload: Mapped[dict[str, Any]] = mapped_column(JSONB, default=dict)
+    status: Mapped[str] = mapped_column(String, default="queued", index=True)
+    attempts: Mapped[int] = mapped_column(default=0)
+    owner: Mapped[str | None] = mapped_column(String, nullable=True)
+    lease_until: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    available_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now, index=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now)
+    result: Mapped[dict[str, Any] | None] = mapped_column(JSONB, nullable=True)
+    error: Mapped[dict[str, Any] | None] = mapped_column(JSONB, nullable=True)
+
+
+class Trace(Base):
+    __tablename__ = "traces"
+    id: Mapped[str] = mapped_column(String, primary_key=True, default=uid)
+    ticket_id: Mapped[str] = mapped_column(ForeignKey("tickets.id"), index=True)
+    run_type: Mapped[str] = mapped_column(String)
+    data: Mapped[dict[str, Any]] = mapped_column(JSONB)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now)
