@@ -1,0 +1,60 @@
+{
+  "Postgres": {
+    "source": {"image": "pgvector/pgvector:pg17"},
+    "deploy": {"restartPolicyType": "ON_FAILURE", "restartPolicyMaxRetries": 10, "sleepApplication": false},
+    "variables": {
+      "POSTGRES_DB": "railway",
+      "POSTGRES_USER": "postgres",
+      "PGDATA": "/var/lib/postgresql/data/pgdata",
+      "DATABASE_URL": "postgresql://postgres:${{POSTGRES_PASSWORD}}@${{RAILWAY_PRIVATE_DOMAIN}}:5432/railway"
+    }
+  },
+  "api": {
+    "build": {"builder": "DOCKERFILE", "dockerfilePath": "backend/Dockerfile"},
+    "deploy": {
+      "startCommand": "uvicorn trustdesk.main:app --host :: --port 8000",
+      "preDeployCommand": "python -m trustdesk.manage",
+      "healthcheckPath": "/api/v1/health",
+      "healthcheckTimeout": 180,
+      "restartPolicyType": "ON_FAILURE",
+      "restartPolicyMaxRetries": 10,
+      "sleepApplication": false
+    },
+    "variables": {"PORT": "8000"}
+  },
+  "worker": {
+    "build": {"builder": "DOCKERFILE", "dockerfilePath": "backend/Dockerfile"},
+    "deploy": {
+      "startCommand": "python -m trustdesk.worker",
+      "preDeployCommand": "python -m trustdesk.manage",
+      "restartPolicyType": "ON_FAILURE",
+      "restartPolicyMaxRetries": 10,
+      "sleepApplication": false
+    },
+    "variables": {}
+  },
+  "mock-actions": {
+    "build": {"builder": "DOCKERFILE", "dockerfilePath": "backend/Dockerfile"},
+    "deploy": {
+      "startCommand": "uvicorn trustdesk.mock_actions:app --host :: --port 8001",
+      "preDeployCommand": "python -m trustdesk.manage",
+      "healthcheckPath": "/health",
+      "healthcheckTimeout": 180,
+      "restartPolicyType": "ON_FAILURE",
+      "restartPolicyMaxRetries": 10,
+      "sleepApplication": false
+    },
+    "variables": {"PORT": "8001"}
+  },
+  "web": {
+    "build": {"builder": "DOCKERFILE", "dockerfilePath": "web/Dockerfile"},
+    "deploy": {
+      "healthcheckPath": "/",
+      "healthcheckTimeout": 180,
+      "restartPolicyType": "ON_FAILURE",
+      "restartPolicyMaxRetries": 10,
+      "sleepApplication": false
+    },
+    "variables": {"PORT": "3000", "HOSTNAME": "::", "API_INTERNAL_URL": "http://${{api.RAILWAY_PRIVATE_DOMAIN}}:8000"}
+  }
+}
