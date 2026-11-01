@@ -13,7 +13,7 @@ Evidence is recorded only after execution.
 | 06 | Triage and drafts | Complete | 21 backend tests and 2 browser E2E tests passed; frontend lint/types/build and backend lint/types passed; fixed stale ticket-response race; isolated browser-test schema verified; [PR](https://github.com/praveen202105/trustdesk/pull/7); implementation `3fc679d4a069`; main CI run 41282605145 |
 | 07 | Approval-gated refund review | Complete | 25 backend tests and 2 browser tests passed; rejection/approval guards, opposing decisions, stale-context blocking and one-effect crash recovery verified; lint/types/build/migration passed; [PR](https://github.com/praveen202105/trustdesk/pull/8); implementation `eb81f290f83b`; main CI run 41282919525 |
 | 08 | Safety and reliability | Complete | 30 backend tests and 3 browser E2E tests passed; blocked-provider reads stayed under 2s, API idempotency replay/conflict verified, HTML escaped; runtime npm audit 0 findings; credential scan/lint/types/build passed; [PR](https://github.com/praveen202105/trustdesk/pull/9); implementation `bf2e014ca51d`; main CI run 41283578647 |
-| 09 | Evaluation and release candidate | Local checks passed; CI pending | 41 backend tests; 4 browser E2E; mock eval 8/8; container builds and HTTP flows; application/database restart preserves one review effect; production npm audit 0 |
+| 09 | Evaluation and release candidate | Complete | 41 backend tests; 4 browser E2E; mock eval 8/8; container builds and HTTP flows; application/database restart preserves one review effect; production npm audit 0; [PR](https://github.com/praveen202105/trustdesk/pull/10); implementation `a6ecb6b83e0f`; main CI run 41285790720 |
 | 10 | Railway staging | Pending | — |
 | 11 | Production and handoff | Pending | — |
 
