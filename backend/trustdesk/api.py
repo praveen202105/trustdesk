@@ -145,3 +145,46 @@ def knowledge_document(document_id: str, version_hash: str | None = None):
             raise HTTPException(404, "RESOURCE_NOT_FOUND")
         return {"document_id": doc.id, "title": saved.title, "content": saved.content,
                 "version_hash": version, "trusted_policy": doc.trusted_policy}
+
+
+class EmptyBody(StrictBody):
+    pass
+
+
+@router.post("/tickets/{ticket_id}/triage")
+def submit_triage(ticket_id: str, body: EmptyBody, request: Request):
+    from .jobs import enqueue, mutate
+    def operation(session):
+        get_ticket(session, ticket_id)
+        return enqueue(session, "triage", ticket_id)
+    return mutate(request, body.model_dump(), operation, factory=SessionLocal)
+
+
+@router.post("/tickets/{ticket_id}/drafts")
+def submit_draft(ticket_id: str, body: EmptyBody, request: Request):
+    from .jobs import enqueue, mutate
+    def operation(session):
+        get_ticket(session, ticket_id)
+        if not latest(session, ticket_id, "triage"):
+            raise HTTPException(409, "TRIAGE_REQUIRED")
+        return enqueue(session, "draft", ticket_id)
+    return mutate(request, body.model_dump(), operation, factory=SessionLocal)
+
+
+@router.get("/tickets/{ticket_id}/drafts")
+def list_drafts(ticket_id: str):
+    with SessionLocal() as session:
+        get_ticket(session, ticket_id)
+        rows = session.scalars(select(Artifact).where(Artifact.ticket_id == ticket_id, Artifact.kind == "draft")
+                               .order_by(Artifact.created_at.desc()).limit(100)).all()
+        return {"items": [{"id": row.id, **row.data} for row in rows]}
+
+
+@router.get("/tickets/{ticket_id}/traces")
+def traces(ticket_id: str):
+    from .models import Trace
+    with SessionLocal() as session:
+        get_ticket(session, ticket_id)
+        rows = session.scalars(select(Trace).where(Trace.ticket_id == ticket_id)
+                               .order_by(Trace.created_at.desc()).limit(100)).all()
+        return {"items": [{"id": row.id, "run_type": row.run_type, **row.data} for row in rows]}
