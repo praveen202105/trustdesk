@@ -54,3 +54,7 @@ The downstream mock service atomically stores idempotency key, argument hash and
 One demo agent/session, signed HttpOnly SameSite=Strict cookie, eight-hour TTL, mutation Origin checks and ten login attempts per IP/minute. HTTPS hosting requires unique secrets and Secure cookies. Full RBAC and distributed login throttling are not implemented.
 
 Persist ticket/run type, retrieved IDs, recommendations/tool calls, guardrail outcome, final status, model/config information and available token counts. Failure traces and API errors exclude raw exceptions and credentials. No hidden chain-of-thought is stored. Retention/purge automation is not included; operators manage retention explicitly.
+
+## Free hosting profile
+
+[Render + Neon](free-deployment.md) uses four supervised processes in a single free Render container, with API and action ports bound to loopback. PostgreSQL/pgvector stays on a separate Neon project for each environment. The job and approval contracts are unchanged; workers resume persisted work when the host wakes after idle sleep. Local Compose retains separate containers. This hosting profile trades always-on availability for zero-cost demo hosting.

@@ -23,3 +23,7 @@ Default AI and embeddings are deterministic mocks. No real-provider quality, pai
 ## Railway preflight
 
 Authentication succeeded. Project creation was rejected on 2026-11-01 because the workspace trial expired. Read-back found no TrustDesk project. No billing change or hosted verification occurred. Staging and production remain pending.
+
+## Free-host profile checks
+
+The user selected Render Free + Neon Free instead of Railway. Root Docker image built successfully. Three supervisor/configuration tests passed. Full HTTP flow and 8/8 supplied mock cases passed with the container constrained to 512 MiB and 0.1 CPU, using a separate local schema. [Resource sample](free-container-resources.json) and [HTTP results](free-container-smoke.json) record actual observations; the memory sample is not a measured peak. Cold start under hard CPU throttling took several minutes. Neon staging PG17 migration, explicit import and approved-policy indexing passed. No hosted application acceptance is claimed yet. The new image build reported 16 moderate development dependency advisories; runtime audit remains gated by CI.

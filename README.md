@@ -83,4 +83,4 @@ V1 live drafts are restricted to reviewed policy templates; unreviewed paraphras
 
 ## Deployment status
 
-Development phases 0–9 passed local checks and GitHub PR/main CI. Railway provisioning is blocked by an expired account trial; no hosted URL or production release is claimed. See [deployment runbook](deployment-runbook.md) for prepared service configuration and remaining acceptance gates.
+Development phases 0–9 passed local checks and GitHub PR/main CI. The user selected free hosting; [Render + Neon deployment](free-deployment.md) is in progress. No hosted acceptance or production release is claimed until its actual checks pass. [Railway configuration](deployment-runbook.md) remains an optional paid-hosting alternative.

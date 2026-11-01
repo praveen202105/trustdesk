@@ -1,5 +1,7 @@
 # Railway deployment runbook
 
+Current hosting choice: [free Render + Neon](free-deployment.md). This file retains the Railway alternative and its historical billing blocker; do not activate a paid plan for the free deployment.
+
 ## Actual status
 
 Deployment is blocked before provisioning: on 2026-11-01 Railway rejected `railway init --name TrustDesk --workspace 4844be13-d59f-44a6-8201-37efbd4da160` with **Your trial has expired. Please select a plan to continue using Railway.** Read-back confirmed no TrustDesk project exists. Authentication works. No plan upgrade, payment, hosted database, or public URL was created. Phases 10 and 11 have not passed their acceptance gates.
