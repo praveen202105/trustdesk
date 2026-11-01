@@ -13,3 +13,36 @@ jobs:
           python-version: '3.12'
       - run: python scripts/check_docs.py
       - run: python capstone/scripts/validate_pack.py
+  backend:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: pgvector/pgvector:pg17
+        env:
+          POSTGRES_USER: trustdesk
+          POSTGRES_PASSWORD: local-dev-only
+          POSTGRES_DB: trustdesk
+        ports: ['5438:5432']
+        options: >-
+          --health-cmd "pg_isready -U trustdesk"
+          --health-interval 3s --health-timeout 3s --health-retries 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+      - run: uv sync --frozen
+        working-directory: backend
+      - run: uv run ruff check . && uv run mypy trustdesk && uv run pytest
+        working-directory: backend
+  frontend:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+      - run: npm ci
+        working-directory: web
+      - run: npm run lint && npm run typecheck && npm run build
+        working-directory: web
