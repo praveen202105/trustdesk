@@ -127,3 +127,34 @@ def test_api_idempotency_and_forged_actor_are_rejected(database, ready, monkeypa
     with database() as session:
         assert session.scalar(select(func.count()).select_from(Approval)) == 1
         assert session.scalar(select(func.count()).select_from(Job).where(Job.kind == "execute_action")) == 1
+
+
+def test_stale_worker_failure_cannot_poison_new_owner(database, ready, monkeypatch):
+    import httpx
+
+    original = actions.execute_remote
+    with database.begin() as session:
+        response = decide(session, ready, "approved", "Reviewed", "demo-agent")
+        job_id = response["execution_job_id"]
+    old = claim(database)
+
+    def late_failure(arguments):
+        with database.begin() as session:
+            session.get(Job, job_id).owner = "newer-worker"
+        raise httpx.HTTPStatusError(
+            "expired worker credentials",
+            request=httpx.Request("POST", "http://mock-actions/internal/refund-reviews"),
+            response=httpx.Response(401),
+        )
+
+    monkeypatch.setattr(actions, "execute_remote", late_failure)
+    with pytest.raises(HTTPException):
+        execute(old, database)
+    with database.begin() as session:
+        assert session.get(Proposal, ready).state == "executing"
+        session.get(Job, job_id).lease_until = now() - timedelta(seconds=1)
+    monkeypatch.setattr(actions, "execute_remote", original)
+    run_once(database)
+    with database() as session:
+        assert session.get(Proposal, ready).state == "succeeded"
+        assert session.scalar(select(func.count()).select_from(MockEffect)) == 1

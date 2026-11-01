@@ -9,6 +9,7 @@ from .jobs import Completion
 from .knowledge import retrieve, valid_citations
 from .models import Artifact, Trace, uid
 from .policy import context_for, context_hash, decision
+from .privacy import redact
 from .providers import provider
 
 
@@ -51,6 +52,7 @@ def analyze(context: dict, kind: str, session) -> tuple[dict, dict]:
             }
         )
         result = TriageOutput.model_validate(response.get("triage")).model_dump()
+        result["reason"] = redact(result["reason"])
         usage = response.get("usage")
         if guards or triage["escalation_required"]:
             result = triage
@@ -111,6 +113,10 @@ def analyze(context: dict, kind: str, session) -> tuple[dict, dict]:
 
 
 def dispatch(job, factory):
+    if job["kind"] in ("evaluation", "eval_case"):
+        from .evaluation import evaluation_job
+
+        return evaluation_job(job, factory)
     if job["kind"] == "execute_action":
         from .actions import execute
 

@@ -1,6 +1,6 @@
 # Testing and evaluation
 
-Status: test specification only. No tests have run and no scores are claimed.
+Status: executable suites now exist. Actual measured outcomes are in [verification](reports/verification.md), [mock evaluation](reports/evaluation.mock.json) and [phase evidence](phase-progress.md); the matrix below remains the acceptance contract.
 
 ## Verification layers
 
@@ -28,22 +28,22 @@ Report dataset hash, corpus version, model/embedding IDs, prompt version, mock/l
 
 ## PDF requirement traceability
 
-| ID | Required capability | Milestone | Acceptance evidence |
+| ID | Required capability | Phase | Acceptance evidence |
 | --- | --- | --- | --- |
-| R01 | Load customers/orders/tickets/tools/evals/KB, preserve IDs | M0–M2 | Import counts, ID assertions, repeat-import and rollback tests |
-| R02 | Policy windows evaluated at ticket created_at | M3–M4 | Boundary/timezone tests; current-clock changes do not change decision |
-| R03 | List/detail/context APIs and simple UI | M2 | Contract tests and ticket-view browser flow |
-| R04 | Retrieval and policy-cited drafts | M3–M4 | Source links, claim/excerpt checks and grounding evaluation |
-| R05 | Category, priority and escalation triage | M4 | Enum validation, expected-label comparisons and escalation matrix |
-| R06 | One human-approved idempotent tool action | M5 | Approve/reject, bypass denial, concurrency and crash recovery |
-| R07 | Identity/coupon/secret/injected-document defenses | M4–M6 | E12–E16 and E21; zero forbidden effects |
-| R08 | Minimum trace per AI run | M4 | Ticket/run type, retrieved IDs, tool actions, guardrail result and final status persisted |
-| R09 | Evaluation runner and visible summary | M7 | One command/API/UI flow, complete case counts and four required metric families |
-| R10 | Persistent store and simple authentication | M1–M5 | Restart persistence, session checks and protected-route tests |
-| R11 | Retrieval layer and mockable AI adapter | M1–M4 | Real retrieval integration; mock/live adapter contract tests |
-| R12 | Nonblocking long AI/evaluation operations | M1, M4, M7 | While provider is held for 10 seconds, ticket reads finish within 2 seconds locally |
-| R13 | Critical-flow/guardrail automated tests | M2–M7 | Saved test command output and failure details |
-| R14 | README, public repo, explainer video, evaluation summary | M8 | Reproducible clean setup and submission checklist |
+| R01 | Load customers/orders/tickets/tools/evals/KB, preserve IDs | 00–02 | Import counts, ID assertions, repeat-import and rollback tests |
+| R02 | Policy windows evaluated at ticket created_at | 05–06 | Boundary/timezone tests; current-clock changes do not change decision |
+| R03 | List/detail/context APIs and simple UI | 03 | Contract tests and ticket-view browser flow |
+| R04 | Retrieval and policy-cited drafts | 05–06 | Source links, claim/excerpt checks and grounding evaluation |
+| R05 | Category, priority and escalation triage | 06 | Enum validation, expected-label comparisons and escalation matrix |
+| R06 | One human-approved idempotent tool action | 07 | Approve/reject, bypass denial, concurrency and crash recovery |
+| R07 | Identity/coupon/secret/injected-document defenses | 06–08 | E12–E16 and E21; zero forbidden effects |
+| R08 | Minimum trace per AI run | 06 | Ticket/run type, retrieved IDs, tool actions, guardrail result and final status persisted |
+| R09 | Evaluation runner and visible summary | 09 | One command/API/UI flow, complete case counts and four required metric families |
+| R10 | Persistent store and simple authentication | 01–07 | Restart persistence, session checks and protected-route tests |
+| R11 | Retrieval layer and mockable AI adapter | 01–06 | Real retrieval integration; mock/live adapter contract tests |
+| R12 | Nonblocking long AI/evaluation operations | 04, 06, 09 | While a provider is held behind an explicit test barrier, ticket reads finish within 2 seconds locally |
+| R13 | Critical-flow/guardrail automated tests | 02–09 | Saved test command output and failure details |
+| R14 | README, public repo, explainer video, evaluation summary | 09–11 | Reproducible clean setup and submission checklist |
 
 The 2-second local responsiveness check is a project target, not a PDF-specified performance promise. Record machine/environment details and investigate failures rather than relabeling the threshold after the run.
 
@@ -61,3 +61,9 @@ Maintain an evidence table with requirement ID, test/demo reference, observed re
 ## Implementation roadmap update
 
 Follow [phase progress](phase-progress.md) and [source provenance](source-provenance.md). Verified capstone requirements override earlier illustrative examples. Only refund review is executable; its payload includes amount and idempotency_key. Mock AI results do not establish live-model quality.
+
+## Runtime test entry points
+
+Backend: `uv run pytest` from backend/ against PostgreSQL. Tests use disposable schemas. Frontend: `npm run test:e2e` after a production build, with Playwright Chromium installed; its supervisor creates and cleans an isolated schema and separate worker/mock-action processes. Stop ordinary local app containers before browser tests reserve their ports.
+
+CI checks source/docs/credential patterns, backend lint/types/tests, frontend lint/types/build/browser flows, production dependency audit and container builds. No passing claim should be inferred from a planned matrix row alone. Required-document coverage follows the native capstone metric; report action recall per expected action, not by counting empty allowed-action lists as successes.

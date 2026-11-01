@@ -1,3 +1,4 @@
+from pydantic import AliasChoices, Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -19,7 +20,9 @@ class Settings(BaseSettings):
     mock_action_secret: str = "local-actions-only"
     data_dir: str = "../capstone/data"
     secure_cookies: bool = False
-    revision: str = "development"
+    revision: str = Field(
+        default="development", validation_alias=AliasChoices("RAILWAY_GIT_COMMIT_SHA", "REVISION")
+    )
 
 
 settings = Settings()

@@ -1,104 +1,72 @@
-# API contracts
+# Implemented API contracts
 
-Design contract for the future implementation. All payload examples are illustrative, not verified supplied-data schemas. Base path: `/api/v1`. JSON uses snake_case; generated IDs are UUIDs in implementation. Timestamps use ISO 8601 UTC. Pagination uses `limit` (default 25, maximum 100) and opaque `cursor`.
-
-## Shared behavior
-
-Authenticate with the demo session cookie. All mutation routes require valid Origin. For POST operations other than login/logout, require `Idempotency-Key`. Persist actor + route + key + canonical body hash atomically with the mutation: same request replays the original response; a different body returns `409 IDEMPOTENCY_CONFLICT`. Retain request keys for 30 days; action proposal uniqueness and downstream action keys remain permanent.
-
-Async submissions return `202 {"job_id":"<uuid>","status":"queued"}`. `GET /jobs/{id}` returns status and a typed `result` on success or sanitized `error` on failure. Poll at two-second intervals, back off to ten seconds, and stop on terminal status. A failed draft/triage job can be resubmitted with a new key after its cause is fixed.
-
-Errors use `{"error":{"code":"EVIDENCE_INSUFFICIENT","message":"Policy evidence is missing","request_id":"<uuid>","details":{}}}`. Never return provider secrets or raw stack traces.
+Base path: `/api/v1`. Source ticket IDs remain `tkt_*`; generated artifacts/jobs/proposals/evaluations use UUIDs. JSON uses snake_case. All routes except health and login require the demo session cookie. Mutations require the exact configured `Origin`. The browser uses the Next.js proxy; provider/action credentials remain server-side.
 
 ## Routes
 
-| Method and route | Input | Result |
+| Method / route | Input | Success |
 | --- | --- | --- |
-| GET `/health` | None | 200 with service readiness; no credentials/config dump |
-| POST `/auth/session` | `{ "token": "<demo token>" }` | 204 and session cookie; invalid token 401 |
-| DELETE `/auth/session` | None | 204, clears session |
-| GET `/tickets` | Optional category, priority, escalation filters, cursor, limit | 200 items and next_cursor; filters use latest successful triage |
-| GET `/tickets/{ticket_id}` | Source ticket ID | 200 ticket, linked customer/order, latest artifacts and data warnings; missing ticket 404 |
-| POST `/tickets/{ticket_id}/triage` | `{}` | 202 triage job |
-| POST `/tickets/{ticket_id}/drafts` | `{}` | 202 draft job; latest successful triage required, otherwise 409 TRIAGE_REQUIRED |
-| GET `/tickets/{ticket_id}/drafts` | Pagination | 200 versioned drafts |
-| GET `/knowledge/documents/{document_id}` | Document ID, optional version hash | 200 policy text/excerpts for citation review; unavailable version 404 |
-| POST `/tickets/{ticket_id}/action-proposals` | `{ "draft_id": "<uuid>" }` | 201 validated proposal; only server derives action arguments from draft/context |
-| GET `/action-proposals/{proposal_id}` | Proposal ID | 200 proposal, decision and execution state |
-| POST `/action-proposals/{proposal_id}/decision` | `{ "decision": "approved", "reason": "Reviewed evidence" }` | 200 decision/proposal; approved also creates execution job atomically |
-| GET `/tickets/{ticket_id}/traces` | Pagination | 200 sanitized AI traces and action references |
-| GET `/jobs/{job_id}` | Job ID | 200 status, result or error |
-| POST `/evaluations` | `{ "suite": "provided" }` | 202 evaluation job over configured imported dataset; no client filesystem paths |
-| GET `/evaluations/{evaluation_id}` | Evaluation ID | 200 counts, metrics, cases, failures and completion status |
+| GET `/health` | None | 200 status, mode and revision; unavailable database 503 |
+| POST `/auth/session` | `{ "token": "<access token>" }` | 204 and cookie |
+| DELETE `/auth/session` | None | 204, cookie removed |
+| GET `/tickets` | limit 1–100 (25 default), opaque cursor, optional category/priority/escalation | items, next_cursor and AI mode |
+| GET `/tickets/{ticket_id}` | Source ID | ticket, minimal customer context, associated order, latest triage/draft and warnings |
+| POST `/tickets/{ticket_id}/triage` | `{}` | 202 job_id/status |
+| POST `/tickets/{ticket_id}/drafts` | `{}`; successful current triage required | 202 job_id/status |
+| GET `/tickets/{ticket_id}/drafts` | Source ID | up to 100 versioned drafts |
+| GET `/tickets/{ticket_id}/traces` | Source ID | up to 100 recent sanitized traces |
+| GET `/knowledge/search` | query, 1–2,000 characters | ranked chunks with source/version/excerpt/score |
+| GET `/knowledge/documents/{document_id}` | optional version_hash | versioned source content, title and approval flag |
+| GET `/jobs/{job_id}` | UUID | queued/running/succeeded/failed, attempts, result or error |
+| POST `/tickets/{ticket_id}/action-proposals` | `{ "draft_id": "<uuid>" }` | 201 validated proposal |
+| GET `/tickets/{ticket_id}/action-proposals` | Source ID | up to 100 recent proposals |
+| GET `/action-proposals/{proposal_id}` | UUID | state, canonical arguments, evidence and execution result |
+| POST `/action-proposals/{proposal_id}/decision` | decision approved/rejected; reason 1–1,000 characters | 200 proposal; approval also returns execution_job_id |
+| POST `/evaluations` | `{ "suite": "provided" }` | 202 evaluation_id, job_id, status |
+| GET `/evaluations/{evaluation_id}` | UUID | progress or complete case/metric report, with errors disclosed |
 
-Data import is a local management CLI, not a browser file-upload endpoint. No customer-send, direct refund, approval-bypass or arbitrary tool-execution endpoint exists.
+Data import/index are local management commands. Ticket creation, customer reply delivery and direct tool execution are not public endpoints. The original capstone permits documented route-shape changes; its workflows are preserved.
 
-## Representative results
+## Idempotent mutation contract
 
-Successful triage job result:
+All POST operations except login require `Idempotency-Key` (maximum 200 characters). Scope is actor + route + key. The same key/body replays the original status/body; a changed body returns `409 IDEMPOTENCY_CONFLICT`. V1 retains these records without automatic expiry. Approval/action uniqueness provides additional protection across different request keys.
 
-```json
-{
-  "triage_id": "<uuid>",
-  "ticket_id": "TICKET-EXAMPLE-001",
-  "category": "refund",
-  "priority": "medium",
-  "escalation_required": false,
-  "reason": "A policy-supported review path is available",
-  "ai_run_id": "<uuid>"
-}
-```
+Submission returns a job before model work begins. Poll `/jobs/{job_id}` until terminal; errors after acceptance appear in the job record, not as a changed historical HTTP response. Triage results contain category, priority, sentiment, escalation_required and reason. Completed jobs link artifact_id and ai_run_id. Drafts contain text, citations, status, escalation_required and recommended_actions.
 
-Successful draft job result:
+A citation includes document_id, version_hash, chunk_id, quote and claim. A ready draft is `ready_for_review`; a safe refusal/escalation is `escalated`. Generic refusals without policy claims may have no citations.
 
-```json
-{
-  "draft_id": "<uuid>",
-  "ticket_id": "TICKET-EXAMPLE-001",
-  "text": "We can request a refund review under the applicable policy.",
-  "citations": [
-    {"document_id": "KB-REFUND-001", "version_hash": "<hash>", "chunk_id": "<uuid>", "quote": "<actual supporting excerpt>", "claim": "A refund review may be requested"}
-  ],
-  "status": "ready_for_review",
-  "escalation_required": false,
-  "ai_run_id": "<uuid>"
-}
-```
+## Refund-review payload
 
-Draft status is `ready_for_review` or `escalated`. An escalated draft may contain only a safe clarification/refusal; it cannot support an action proposal. Citations need not exist for a generic safe refusal that makes no policy claims.
-
-Action proposal shape:
+Illustrative shape using real source IDs; UUIDs and review references are generated at runtime:
 
 ```json
 {
   "proposal_id": "<uuid>",
-  "ticket_id": "TICKET-EXAMPLE-001",
+  "ticket_id": "tkt_9008",
   "action_type": "start_refund_review",
-  "arguments": {"order_id": "ORDER-EXAMPLE-001", "reason": "Policy-supported review request"},
-  "arguments_hash": "<sha256>",
+  "arguments": {
+    "order_id": "ord_5006",
+    "reason": "A duplicate charge requires billing review",
+    "amount": "15999",
+    "idempotency_key": "refund-review:<proposal uuid>"
+  },
   "state": "proposed",
-  "evidence_document_ids": ["KB-REFUND-001"],
   "execution_job_id": null
 }
 ```
 
-Decision values are only `approved` and `rejected`. An identical repeated decision returns the stored result; an opposing decision returns 409. Approval returns `execution_job_id`; execution proceeds asynchronously. Proposal terminal result includes `external_review_id` if successful. One proposal per draft/action type prevents accidental double clicks; execution also rejects another active or successful refund-review action for the same ticket/order. A genuinely new review after prior success is outside V1.
+The client cannot supply or edit action arguments. Rejecting prevents execution. Approving inserts an immutable Approval and durable Job atomically. A successful result contains an external_review_id, status `review_requested` and `money_refunded: false`. Existing decisions replay; opposing decisions return 409. Changed context blocks execution and requires new reviewed evidence.
 
-## Validation and errors
+## Errors
 
-| HTTP | Codes and expected client behavior |
-| --- | --- |
-| 400 / 422 | Malformed request, missing idempotency key, invalid enum/schema; show validation feedback |
-| 401 | SESSION_REQUIRED / INVALID_TOKEN; require login |
-| 403 | ORIGIN_REJECTED / ACTION_NOT_ALLOWED; do not retry blindly |
-| 404 | RESOURCE_NOT_FOUND; show missing-record state |
-| 409 | TRIAGE_REQUIRED, IDEMPOTENCY_CONFLICT, DECISION_CONFLICT, STALE_CONTEXT, DUPLICATE_ACTION, INVALID_STATE; refresh context |
-| 422 | EVIDENCE_INSUFFICIENT / CONTEXT_INCOMPLETE; show escalation reason |
-| 429 | RATE_LIMITED with Retry-After |
-| 503 | DATABASE_UNAVAILABLE / QUEUE_UNAVAILABLE; request not accepted, safe retry using same key |
+Common envelope:
 
-Model/provider failures after 202 appear as failed job error codes (`PROVIDER_TIMEOUT`, `PROVIDER_UNAVAILABLE`, `INVALID_AI_OUTPUT`, `RETRIEVAL_UNAVAILABLE`). They do not retroactively change the submission HTTP response. Once approval is committed, UI/network failure must not erase the decision; reread proposal/job state.
+```json
+{"error":{"code":"STALE_CONTEXT","message":"Stale context","request_id":"<uuid>","details":{}}}
+```
 
-## Implementation roadmap update
+401: invalid/missing/expired session. 403: Origin, tool permission or ownership failure. 404: missing resource/version. 409: stale context, decision/body conflict, duplicate action or required triage. 413: body over 256 KiB. 422: invalid schema/enum, evidence or missing idempotency key. 429: login throttling with Retry-After. 503: database/API/retrieval unavailable. Job errors are sanitized and do not include provider bodies, credentials or stack traces.
 
-Follow [phase progress](phase-progress.md) and [source provenance](source-provenance.md). Verified capstone requirements override earlier illustrative examples. Only refund review is executable; its payload includes amount and idempotency_key. Mock AI results do not establish live-model quality.
+## Internal service
+
+`POST /internal/refund-reviews` belongs only to mock-actions, not the public API proxy. It requires `X-Action-Secret`, a matching Idempotency-Key header and the catalog-required payload. It atomically replays an existing effect or rejects a mismatched body. Only web receives public networking in the Railway setup.

@@ -1,0 +1,22 @@
+{
+  "base_url": "http://localhost:3000",
+  "checks": [
+    "authenticated_ticket_list",
+    "linked_context",
+    "background_triage",
+    "cited_draft",
+    "approved_idempotent_mock_review",
+    "all_supplied_mock_cases",
+    "logout_protects_workspace"
+  ],
+  "health": {
+    "status": "ok",
+    "mode": "mock",
+    "revision": "development"
+  },
+  "proposal_id": "5168cf8a-9262-49da-b948-8e59885f56f5",
+  "external_review_id": "review_8de2dbfa-1430-46fb-b315-bb5ee78fbd38",
+  "evaluation_id": "68f509cc-da29-48a3-a108-3a3051857b94",
+  "evaluation_passed": 8,
+  "evaluation_total": 8
+}

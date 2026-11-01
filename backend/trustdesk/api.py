@@ -91,7 +91,9 @@ def tickets(
     after = ""
     if cursor:
         try:
-            after = base64.urlsafe_b64decode(cursor.encode()).decode()
+            after = base64.b64decode(cursor.encode(), altchars=b"-_", validate=True).decode()
+            if not after:
+                raise ValueError("Empty cursor")
         except Exception:
             raise HTTPException(422, "INVALID_CURSOR") from None
     with SessionLocal() as session:
@@ -306,3 +308,41 @@ def decision_proposal(proposal_id: str, body: DecisionBody, request: Request):
         status=200,
         factory=SessionLocal,
     )
+
+
+class EvaluationBody(StrictBody):
+    suite: Literal["provided"] = "provided"
+
+
+@router.post("/evaluations")
+def submit_evaluation(body: EvaluationBody, request: Request):
+    from .jobs import enqueue, mutate
+    from .models import EvaluationRun, uid
+
+    def operation(session):
+        from .jobs import advisory
+
+        advisory(session, "source-import")
+        evaluation_id = uid()
+        submitted = enqueue(session, "evaluation", payload={"evaluation_id": evaluation_id})
+        session.add(EvaluationRun(id=evaluation_id, job_id=submitted["job_id"]))
+        return {"evaluation_id": evaluation_id, **submitted}
+
+    return mutate(request, body.model_dump(), operation, factory=SessionLocal)
+
+
+@router.get("/evaluations/{evaluation_id}")
+def get_evaluation(evaluation_id: str):
+    from .models import EvaluationRun, Job
+
+    with SessionLocal() as session:
+        row = session.get(EvaluationRun, evaluation_id)
+        if not row:
+            raise HTTPException(404, "RESOURCE_NOT_FOUND")
+        parent = session.get(Job, row.job_id) if row.job_id else None
+        return {
+            "evaluation_id": row.id,
+            "status": "failed" if parent and parent.status == "failed" else row.status,
+            "error": parent.error if parent else None,
+            **row.data,
+        }

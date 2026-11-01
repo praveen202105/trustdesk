@@ -7,6 +7,7 @@ from pydantic import BaseModel, ConfigDict, Field
 
 from .config import settings
 from .jobs import TransientError
+from .privacy import redact, sanitized
 
 
 class TriageFields(BaseModel):
@@ -41,6 +42,7 @@ class CompatibleProvider:
     def generate(self, context: dict) -> dict:
         if not settings.ai_api_key:
             raise ValueError("Live provider key is not configured")
+        context = sanitized(context)
         messages = [
             {
                 "role": "system",
@@ -76,7 +78,13 @@ class CompatibleProvider:
                 return {
                     "text": output.text,
                     "triage": output.triage.model_dump() if output.triage else None,
-                    "usage": raw.get("usage"),
+                    "usage": {
+                        k: v
+                        for k, v in (raw.get("usage") or {}).items()
+                        if k in ("prompt_tokens", "completion_tokens", "total_tokens")
+                        and isinstance(v, int)
+                        and v >= 0
+                    },
                 }
             except (httpx.TimeoutException, httpx.NetworkError) as exc:
                 raise TransientError("Provider connection failed") from exc
@@ -98,6 +106,7 @@ def provider() -> Provider:
 
 
 def embedding(text: str) -> list[float]:
+    text = redact(text)
     if settings.embedding_provider == "compatible":
         try:
             response = httpx.post(

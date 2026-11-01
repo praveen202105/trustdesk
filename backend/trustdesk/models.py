@@ -172,3 +172,12 @@ class ToolCall(Base):
     attempts: Mapped[int] = mapped_column(default=0)
     status: Mapped[str] = mapped_column(String, default="pending")
     result: Mapped[dict[str, Any] | None] = mapped_column(JSONB, nullable=True)
+
+
+class EvaluationRun(Base):
+    __tablename__ = "evaluation_runs"
+    id: Mapped[str] = mapped_column(String, primary_key=True, default=uid)
+    job_id: Mapped[str | None] = mapped_column(ForeignKey("jobs.id"), nullable=True)
+    status: Mapped[str] = mapped_column(String, default="queued")
+    data: Mapped[dict[str, Any]] = mapped_column(JSONB, default=dict)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now)

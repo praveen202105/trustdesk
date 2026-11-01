@@ -1,3 +1,17 @@
+x-backend-env: &backend-env
+  DATABASE_URL: postgresql+psycopg://trustdesk:local-dev-only@db/trustdesk
+  APP_ORIGIN: ${APP_ORIGIN:-http://localhost:3000}
+  DEMO_LOGIN_TOKEN: ${DEMO_LOGIN_TOKEN:-local-demo-only}
+  SESSION_SECRET: ${SESSION_SECRET:-local-session-secret-change-before-hosting}
+  MOCK_ACTION_SECRET: ${MOCK_ACTION_SECRET:-local-actions-only}
+  MOCK_ACTION_BASE_URL: http://mock-actions:8001
+  AI_PROVIDER: ${AI_PROVIDER:-mock}
+  AI_MODEL: ${AI_MODEL:-mock-policy-v1}
+  AI_API_KEY: ${AI_API_KEY:-}
+  EMBEDDING_PROVIDER: ${EMBEDDING_PROVIDER:-mock}
+  EMBEDDING_MODEL: ${EMBEDDING_MODEL:-mock-hash-v1}
+  EMBEDDING_DIMENSION: ${EMBEDDING_DIMENSION:-64}
+  SECURE_COOKIES: ${SECURE_COOKIES:-false}
 services:
   db:
     image: pgvector/pgvector:pg17
@@ -12,34 +26,45 @@ services:
       interval: 3s
       timeout: 3s
       retries: 20
-  api:
+  migrate:
     build: {context: ., dockerfile: backend/Dockerfile}
-    environment:
-      DATABASE_URL: postgresql+psycopg://trustdesk:local-dev-only@db/trustdesk
-      MOCK_ACTION_BASE_URL: http://mock-actions:8001
+    command: python -m trustdesk.manage
+    environment: *backend-env
     depends_on:
       db: {condition: service_healthy}
+  api:
+    build: {context: ., dockerfile: backend/Dockerfile}
+    environment: *backend-env
+    depends_on:
+      migrate: {condition: service_completed_successfully}
     ports: ["127.0.0.1:8000:8000"]
+    volumes: ["reports:/reports"]
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/api/v1/health',timeout=5)"]
+      interval: 5s
+      timeout: 6s
+      retries: 20
   mock-actions:
     build: {context: ., dockerfile: backend/Dockerfile}
     command: uvicorn trustdesk.mock_actions:app --host 0.0.0.0 --port 8001
-    environment:
-      DATABASE_URL: postgresql+psycopg://trustdesk:local-dev-only@db/trustdesk
+    environment: *backend-env
     depends_on:
-      db: {condition: service_healthy}
+      migrate: {condition: service_completed_successfully}
   worker:
+    restart: on-failure
     build: {context: ., dockerfile: backend/Dockerfile}
     command: python -m trustdesk.worker
-    environment:
-      DATABASE_URL: postgresql+psycopg://trustdesk:local-dev-only@db/trustdesk
-      MOCK_ACTION_BASE_URL: http://mock-actions:8001
+    environment: *backend-env
     depends_on:
-      db: {condition: service_healthy}
+      api: {condition: service_healthy}
   web:
     build: {context: ., dockerfile: web/Dockerfile}
     environment:
       API_INTERNAL_URL: http://api:8000
       PORT: 3000
     ports: ["127.0.0.1:3000:3000"]
+    depends_on:
+      api: {condition: service_healthy}
 volumes:
   trustdesk-db:
+  reports:
