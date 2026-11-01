@@ -2,7 +2,7 @@ import base64
 import hmac
 import time
 from collections import defaultdict
-from typing import Any
+from typing import Any, Literal
 
 from fastapi import APIRouter, HTTPException, Query, Request, Response
 from itsdangerous import BadSignature, SignatureExpired, URLSafeTimedSerializer
@@ -188,3 +188,51 @@ def traces(ticket_id: str):
         rows = session.scalars(select(Trace).where(Trace.ticket_id == ticket_id)
                                .order_by(Trace.created_at.desc()).limit(100)).all()
         return {"items": [{"id": row.id, "run_type": row.run_type, **row.data} for row in rows]}
+
+
+class ProposalBody(StrictBody):
+    draft_id: str
+
+
+class DecisionBody(StrictBody):
+    decision: Literal["approved", "rejected"]
+    reason: str = Field(min_length=1, max_length=1000)
+
+
+@router.post("/tickets/{ticket_id}/action-proposals")
+def create_proposal(ticket_id: str, body: ProposalBody, request: Request):
+    from .actions import propose
+    from .jobs import mutate
+    return mutate(request, body.model_dump(), lambda session: propose(session, ticket_id, body.draft_id),
+                  status=201, factory=SessionLocal)
+
+
+@router.get("/tickets/{ticket_id}/action-proposals")
+def ticket_proposals(ticket_id: str):
+    from .actions import proposal_json
+    from .models import Proposal
+    with SessionLocal() as session:
+        get_ticket(session, ticket_id)
+        rows = session.scalars(select(Proposal).where(Proposal.ticket_id == ticket_id)
+                               .order_by(Proposal.created_at.desc()).limit(100)).all()
+        return {"items": [proposal_json(row) for row in rows]}
+
+
+@router.get("/action-proposals/{proposal_id}")
+def get_proposal(proposal_id: str):
+    from .actions import proposal_json
+    from .models import Proposal
+    with SessionLocal() as session:
+        row = session.get(Proposal, proposal_id)
+        if not row:
+            raise HTTPException(404, "RESOURCE_NOT_FOUND")
+        return proposal_json(row)
+
+
+@router.post("/action-proposals/{proposal_id}/decision")
+def decision_proposal(proposal_id: str, body: DecisionBody, request: Request):
+    from .actions import decide
+    from .jobs import mutate
+    return mutate(request, body.model_dump(),
+                  lambda session: decide(session, proposal_id, body.decision, body.reason, request.state.actor),
+                  status=200, factory=SessionLocal)

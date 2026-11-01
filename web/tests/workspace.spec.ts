@@ -24,4 +24,8 @@ test("triage, cited draft and policy evidence",async({page})=>{
  await page.getByRole("button",{name:"KB-BILLING-001"}).click();
  await expect(page.getByRole("dialog",{name:"Policy source"})).toBeVisible();
  await page.getByRole("button",{name:"Close",exact:true}).click();
+ await page.getByRole("button",{name:"Prepare refund review",exact:true}).click();
+ await page.getByRole("button",{name:"Approve review",exact:true}).click();
+ await expect(page.getByText("Review requested",{exact:false})).toBeVisible({timeout:30000});
+ await expect(page.getByText("A review request does not issue a refund. No money has been refunded.")).toBeVisible();
 });
