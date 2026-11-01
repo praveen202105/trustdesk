@@ -1,5 +1,6 @@
 from alembic import context
 
+import trustdesk.models  # noqa: F401
 from trustdesk.db import Base, engine
 
 
