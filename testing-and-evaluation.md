@@ -57,3 +57,7 @@ The 2-second local responsiveness check is a project target, not a PDF-specified
 6. Another developer reproduces the mock workflow from clean setup; live-provider limitations are visible.
 
 Maintain an evidence table with requirement ID, test/demo reference, observed result, date and unresolved issue. A template or planned test is never a passing result.
+
+## Implementation roadmap update
+
+Follow [phase progress](phase-progress.md) and [source provenance](source-provenance.md). Verified capstone requirements override earlier illustrative examples. Only refund review is executable; its payload includes amount and idempotency_key. Mock AI results do not establish live-model quality.

@@ -98,3 +98,7 @@ Decision values are only `approved` and `rejected`. An identical repeated decisi
 | 503 | DATABASE_UNAVAILABLE / QUEUE_UNAVAILABLE; request not accepted, safe retry using same key |
 
 Model/provider failures after 202 appear as failed job error codes (`PROVIDER_TIMEOUT`, `PROVIDER_UNAVAILABLE`, `INVALID_AI_OUTPUT`, `RETRIEVAL_UNAVAILABLE`). They do not retroactively change the submission HTTP response. Once approval is committed, UI/network failure must not erase the decision; reread proposal/job state.
+
+## Implementation roadmap update
+
+Follow [phase progress](phase-progress.md) and [source provenance](source-provenance.md). Verified capstone requirements override earlier illustrative examples. Only refund review is executable; its payload includes amount and idempotency_key. Mock AI results do not establish live-model quality.

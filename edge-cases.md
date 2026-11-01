@@ -42,3 +42,7 @@ Every row is a planned test scenario, not a recorded test result. Safety decisio
 | E36 | Real secrets appear in imported data or provider error | Reject/redact sensitive content before model/log/UI exposure; store only sanitized diagnostics. |
 
 Set API JSON body limit to 256 KiB, source document limit to 5 MiB and draft length limit to 8,000 characters for V1. Reject excess explicitly rather than silently truncating eligibility context. If real supplied inputs exceed these defaults, revise limits and tests together before import. Long policy documents are chunked; retrieval budgets never authorize ignoring conflicting evidence.
+
+## Implementation roadmap update
+
+Follow [phase progress](phase-progress.md) and [source provenance](source-provenance.md). Verified capstone requirements override earlier illustrative examples. Only refund review is executable; its payload includes amount and idempotency_key. Mock AI results do not establish live-model quality.

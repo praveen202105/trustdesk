@@ -77,3 +77,7 @@ All fields start as “not run” or “not available”; fill them only from re
 - [ ] Automated-test and recovery evidence; no unverified claims of production readiness.
 
 Publishing a repository, uploading a video or deploying a service is outside this documentation task. Prepare reviewable artifacts first and use the user's applicable authorization for any later external publication.
+
+## Implementation roadmap update
+
+Follow [phase progress](phase-progress.md) and [source provenance](source-provenance.md). Verified capstone requirements override earlier illustrative examples. Only refund review is executable; its payload includes amount and idempotency_key. Mock AI results do not establish live-model quality.

@@ -62,3 +62,7 @@ Demo login exchanges a configured token for an eight-hour signed HttpOnly, SameS
 ## Observability
 
 Correlate requests, jobs and AI runs. Record sanitized error codes, latency, retries, citation validity, guardrail decisions and external references. Never log tokens, hidden prompts or unnecessary customer PII. Console displays inspectable traces with restricted/redacted data; local retention defaults to 30 days with a documented purge task.
+
+## Implementation roadmap update
+
+Follow [phase progress](phase-progress.md) and [source provenance](source-provenance.md). Verified capstone requirements override earlier illustrative examples. Only refund review is executable; its payload includes amount and idempotency_key. Mock AI results do not establish live-model quality.
