@@ -76,10 +76,9 @@ def ingest(session: Session, path: Path) -> dict[str, int]:
     for doc in data["documents"]:
         digest = checksum(doc["content"])
         # Trust is server policy metadata, not a command in retrieved text.
-        approved_ids = {"KB-ACCOUNT-001", "KB-BILLING-001", "KB-COUPON-001", "KB-REFUND-001",
-                        "KB-SHIPPING-001", "KB-SECURITY-001", "KB-WARRANTY-001"}
+        approved = json.loads((Path(__file__).parent / "approved_policies.json").read_text())
         session.merge(Document(id=doc["id"], title=doc["title"], content=doc["content"], checksum=digest,
-                               version=doc["version"], trusted_policy=doc["id"] in approved_ids))
+                               version=doc["version"], trusted_policy=approved.get(doc["id"]) == digest))
         session.flush()
         session.merge(DocumentVersion(id=doc["id"] + ":" + digest, document_id=doc["id"],
                                       checksum=digest, content=doc["content"], title=doc["title"]))

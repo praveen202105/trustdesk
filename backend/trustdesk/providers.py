@@ -62,8 +62,22 @@ def provider() -> Provider:
 
 
 def embedding(text: str) -> list[float]:
+    if settings.embedding_provider == "compatible":
+        try:
+            response = httpx.post(settings.ai_base_url.rstrip("/") + "/embeddings", timeout=30,
+                                  headers={"Authorization": "Bearer " + settings.ai_api_key},
+                                  json={"model": settings.embedding_model, "input": text})
+            if response.status_code == 429 or response.status_code >= 500:
+                raise TransientError("Embedding provider unavailable")
+            response.raise_for_status()
+            values = response.json()["data"][0]["embedding"]
+            if len(values) != settings.embedding_dimension:
+                raise ValueError("Embedding dimension mismatch")
+            return [float(value) for value in values]
+        except (httpx.TimeoutException, httpx.NetworkError) as exc:
+            raise TransientError("Embedding provider unavailable") from exc
     if settings.embedding_provider != "mock":
-        raise ValueError("Live embeddings are not configured; keep mock embeddings or provide an adapter")
+        raise ValueError("Unknown embedding provider")
     vector = [0.0] * settings.embedding_dimension
     for token in re.findall(r"[a-z0-9]+", text.lower()):
         index = int(hashlib.sha256(token.encode()).hexdigest()[:8], 16) % len(vector)
