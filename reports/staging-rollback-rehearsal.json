@@ -1,0 +1,11 @@
+{
+  "provider": "Render Free",
+  "service_id": "srv-dbjjncg473hc73a2b1u0",
+  "candidate_commit": "427966047682ab090656426a8af84617af13b3ab",
+  "baseline_commit": "e4ce9068e13f188cadba0c1d2700c3a136ee6625",
+  "candidate_to_baseline_to_candidate_verified": true,
+  "same_proposal_id": "36233331-3cac-44af-91ea-f49edb886856",
+  "same_external_review_id": "review_dbbaca21-3ea0-406d-843c-7d2bb572408d",
+  "schema_downgrade_performed": false,
+  "note": "Actual application-deployment rollback rehearsal between compatible revisions with documentation differences; does not establish compatibility for future schema changes."
+}

@@ -12,11 +12,11 @@
   "health": {
     "status": "ok",
     "mode": "mock",
-    "revision": "e4ce9068e13f188cadba0c1d2700c3a136ee6625"
+    "revision": "427966047682ab090656426a8af84617af13b3ab"
   },
   "proposal_id": "36233331-3cac-44af-91ea-f49edb886856",
   "external_review_id": "review_dbbaca21-3ea0-406d-843c-7d2bb572408d",
-  "evaluation_id": "6b43490f-10c5-48df-a827-1d8202de7a4c",
+  "evaluation_id": "e9174a79-c5f3-4970-858b-22c24063a98a",
   "evaluation_passed": 8,
   "evaluation_total": 8
 }

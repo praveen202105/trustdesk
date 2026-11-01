@@ -9,5 +9,6 @@
   "chunks": 7,
   "mock_effects": 0,
   "project": "polished-wildflower-00057496",
-  "tls_required": true
+  "tls_required": true,
+  "captured_before_hosted_review": true
 }
