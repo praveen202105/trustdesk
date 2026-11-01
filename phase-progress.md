@@ -7,7 +7,7 @@ Evidence is recorded only after execution.
 | 00 | Source validation and updated docs | Complete | Source validator + docs passed; PR #1 merged; main CI 41280045671 passed; commit fd08efc |
 | 01 | Foundation and CI | Complete | Backend lint/types and 1 test passed; frontend clean npm ci, lint, typecheck and production build passed; PostgreSQL and pgvector ready; [PR](https://github.com/praveen202105/trustdesk/pull/2); implementation `687c5d86ad70`; main CI run 41280600793 |
 | 02 | Database and import | Complete | Fresh Alembic migration and source import passed; 6 customers, 6 orders, 8 tickets, 8 documents; ruff/mypy and 5 pytest checks passed; [PR](https://github.com/praveen202105/trustdesk/pull/3); implementation `04c45ffb6880`; main CI run 41281019028 |
-| 03 | Authentication and tickets | Local checks passed; CI pending | 8 backend tests, ruff/mypy, frontend lint/types/build and Playwright login/search/context/sign-out passed; workspace screenshot visually inspected |
+| 03 | Authentication and tickets | Complete | 8 backend tests, ruff/mypy, frontend lint/types/build and Playwright login/search/context/sign-out passed; workspace screenshot visually inspected; [PR](https://github.com/praveen202105/trustdesk/pull/4); implementation `a912dc55e2d1`; main CI run 41281410432 |
 | 04 | Durable jobs and adapters | Pending | — |
 | 05 | Policy retrieval | Pending | — |
 | 06 | Triage and drafts | Pending | — |
