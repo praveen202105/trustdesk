@@ -1,0 +1,90 @@
+from concurrent.futures import ThreadPoolExecutor
+from datetime import timedelta
+
+import pytest
+from fastapi import HTTPException
+from fastapi.testclient import TestClient
+from sqlalchemy import func, select
+
+from trustdesk import actions, mock_actions
+from trustdesk.actions import decide, execute, propose
+from trustdesk.config import settings
+from trustdesk.jobs import claim, complete, enqueue, run_once
+from trustdesk.knowledge import index_knowledge
+from trustdesk.models import Approval, Artifact, Job, MockEffect, Proposal, Ticket, now
+
+
+@pytest.fixture
+def ready(database, monkeypatch):
+    monkeypatch.setattr(mock_actions, "SessionLocal", database)
+    remote = TestClient(mock_actions.app)
+    def send(arguments):
+        response = remote.post("/internal/refund-reviews",json=arguments,headers={
+            "X-Action-Secret":settings.mock_action_secret,"Idempotency-Key":arguments["idempotency_key"]})
+        response.raise_for_status()
+        return response.json()
+    monkeypatch.setattr(actions, "execute_remote", send)
+    with database.begin() as session:
+        index_knowledge(session)
+        enqueue(session,"triage","tkt_9008")
+    run_once(database)
+    with database.begin() as session:
+        enqueue(session,"draft","tkt_9008")
+    run_once(database)
+    with database.begin() as session:
+        draft = session.scalar(select(Artifact).where(Artifact.kind=="draft"))
+        proposal = propose(session,"tkt_9008",draft.id)
+    return proposal["proposal_id"]
+
+
+def test_approval_and_rejection_guard(database,ready):
+    with pytest.raises(HTTPException):
+        execute({"payload":{"proposal_id":ready}},database)
+    with database.begin() as session:
+        decide(session,ready,"rejected","Not approved","demo-agent")
+    with pytest.raises(HTTPException):
+        execute({"payload":{"proposal_id":ready}},database)
+    with database() as session:
+        assert session.scalar(select(func.count()).select_from(MockEffect))==0
+
+
+def test_crash_after_external_success_replays_same_effect(database,ready):
+    with database.begin() as session:
+        response=decide(session,ready,"approved","Reviewed","demo-agent")
+        job_id=response["execution_job_id"]
+    first=claim(database)
+    outcome=execute(first,database)  # Simulated crash: do not commit the Completion.
+    with database.begin() as session:
+        session.get(Job,job_id).lease_until=now()-timedelta(seconds=1)
+    assert run_once(database)
+    assert not complete(first,outcome,database)
+    with database() as session:
+        assert session.scalar(select(func.count()).select_from(MockEffect))==1
+        assert session.get(Proposal,ready).state=="succeeded"
+        assert session.get(Job,job_id).status=="succeeded"
+        assert session.get(Proposal,ready).result["money_refunded"] is False
+
+
+def test_concurrent_opposing_decisions(database,ready):
+    def choose(value):
+        try:
+            with database.begin() as session:
+                return decide(session,ready,value,"Reviewed","demo-agent")["state"]
+        except HTTPException as exc:
+            return exc.status_code
+    with ThreadPoolExecutor(max_workers=2) as pool:
+        result=list(pool.map(choose,["approved","rejected"]))
+    assert 409 in result
+    with database() as session:
+        assert session.scalar(select(func.count()).select_from(Approval))==1
+
+
+def test_changed_context_blocks_execution(database,ready):
+    with database.begin() as session:
+        decide(session,ready,"approved","Reviewed","demo-agent")
+        ticket=session.get(Ticket,"tkt_9008")
+        ticket.data={**ticket.data,"body":"Changed after approval"}
+    run_once(database)
+    with database() as session:
+        assert session.get(Proposal,ready).state=="blocked"
+        assert session.scalar(select(func.count()).select_from(MockEffect))==0

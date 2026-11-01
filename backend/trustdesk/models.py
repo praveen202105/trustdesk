@@ -135,3 +135,40 @@ class Trace(Base):
     run_type: Mapped[str] = mapped_column(String)
     data: Mapped[dict[str, Any]] = mapped_column(JSONB)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now)
+
+
+class Proposal(Base):
+    __tablename__ = "action_proposals"
+    id: Mapped[str] = mapped_column(String, primary_key=True, default=uid)
+    ticket_id: Mapped[str] = mapped_column(ForeignKey("tickets.id"), index=True)
+    order_id: Mapped[str] = mapped_column(ForeignKey("orders.id"), index=True)
+    draft_id: Mapped[str] = mapped_column(ForeignKey("artifacts.id"), unique=True)
+    action_type: Mapped[str] = mapped_column(String, default="start_refund_review")
+    arguments: Mapped[dict[str, Any]] = mapped_column(JSONB)
+    arguments_hash: Mapped[str] = mapped_column(String)
+    context_hash: Mapped[str] = mapped_column(String)
+    evidence_document_ids: Mapped[list] = mapped_column(JSONB)
+    state: Mapped[str] = mapped_column(String, default="proposed")
+    execution_job_id: Mapped[str | None] = mapped_column(ForeignKey("jobs.id"), nullable=True)
+    result: Mapped[dict[str, Any] | None] = mapped_column(JSONB, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now)
+
+
+class Approval(Base):
+    __tablename__ = "approvals"
+    id: Mapped[str] = mapped_column(String, primary_key=True, default=uid)
+    proposal_id: Mapped[str] = mapped_column(ForeignKey("action_proposals.id"), unique=True)
+    actor: Mapped[str] = mapped_column(String)
+    decision: Mapped[str] = mapped_column(String)
+    reason: Mapped[str] = mapped_column(String)
+    arguments_hash: Mapped[str] = mapped_column(String)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now)
+
+
+class ToolCall(Base):
+    __tablename__ = "tool_calls"
+    id: Mapped[str] = mapped_column(String, primary_key=True)
+    proposal_id: Mapped[str] = mapped_column(ForeignKey("action_proposals.id"), unique=True)
+    attempts: Mapped[int] = mapped_column(default=0)
+    status: Mapped[str] = mapped_column(String, default="pending")
+    result: Mapped[dict[str, Any] | None] = mapped_column(JSONB, nullable=True)

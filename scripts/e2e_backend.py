@@ -26,6 +26,7 @@ try:
     subprocess.run([sys.executable, "-m", "alembic", "upgrade", "head"], cwd=BACKEND, env=env, check=True)
     subprocess.run([sys.executable, "-m", "trustdesk.cli", "import-data"], cwd=BACKEND, env=env, check=True)
     subprocess.run([sys.executable, "-m", "trustdesk.cli", "index-knowledge"], cwd=BACKEND, env=env, check=True)
+    processes.append(subprocess.Popen([sys.executable, "-m", "uvicorn", "trustdesk.mock_actions:app", "--port", "8001"], cwd=BACKEND, env=env))
     processes.append(subprocess.Popen([sys.executable, "-m", "trustdesk.worker"], cwd=BACKEND, env=env))
     processes.append(subprocess.Popen([sys.executable, "-m", "uvicorn", "trustdesk.main:app", "--port", "8000"], cwd=BACKEND, env=env))
     processes[-1].wait()

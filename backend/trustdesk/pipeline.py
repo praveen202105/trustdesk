@@ -82,6 +82,9 @@ def analyze(context: dict, kind: str, session) -> tuple[dict, dict]:
 
 
 def dispatch(job, factory):
+    if job["kind"] == "execute_action":
+        from .actions import execute
+        return execute(job, factory)
     if job["kind"] not in ("triage", "draft"):
         raise ValueError("Unsupported job type")
     with factory() as session:
