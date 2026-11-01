@@ -1,0 +1,14 @@
+{
+  "provider": "Neon Free",
+  "project": "polished-wildflower-00057496",
+  "postgres_major": 17,
+  "backup_format": "custom",
+  "backup_bytes": 46025,
+  "restored_to": "isolated disposable local PG17 database",
+  "counts": {
+    "tickets": "8",
+    "documents": "8",
+    "mock_effects": "0"
+  },
+  "note": "Initial seeded database backup before hosted workflow. Private dump is outside Git; active databases were not overwritten."
+}

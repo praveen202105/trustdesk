@@ -1,0 +1,13 @@
+{
+  "postgres_major": 17,
+  "vector_version": "0.8.0",
+  "migration": "004",
+  "customers": 6,
+  "orders": 6,
+  "tickets": 8,
+  "documents": 8,
+  "chunks": 7,
+  "mock_effects": 0,
+  "project": "polished-wildflower-00057496",
+  "tls_required": true
+}

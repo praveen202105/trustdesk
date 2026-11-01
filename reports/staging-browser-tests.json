@@ -1,0 +1,14 @@
+{
+  "base_url": "https://trustdesk-staging-praveen202105.onrender.com",
+  "revision": "e4ce9068e13f188cadba0c1d2700c3a136ee6625",
+  "passed": 4,
+  "failed": 0,
+  "duration_seconds": 26.2,
+  "scenarios": [
+    "login/customer context/search/signout",
+    "triage/cited draft/policy viewer/human approval",
+    "customer HTML escaped",
+    "provided evaluation visible"
+  ],
+  "runner": "Existing web/tests/workspace.spec.ts with hosted baseURL and no local webServer; token provided in process environment."
+}

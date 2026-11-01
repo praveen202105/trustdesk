@@ -1,0 +1,19 @@
+{
+  "profile": "staging",
+  "service_id": "srv-dbjjncg473hc73a2b1u0",
+  "source_commit": "e4ce9068e13f188cadba0c1d2700c3a136ee6625",
+  "before": [
+    {
+      "createdAt": "2026-11-01T13:18:45Z",
+      "id": "srv-dbjjncg473hc73a2b1u0-4ttx9"
+    }
+  ],
+  "after": [
+    {
+      "createdAt": "2026-11-01T13:20:55Z",
+      "id": "srv-dbjjncg473hc73a2b1u0-2wh6h"
+    }
+  ],
+  "instance_change_observed": true,
+  "previous_instances_gone": true
+}

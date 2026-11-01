@@ -1,0 +1,14 @@
+{
+  "profile": "staging",
+  "service_id": "srv-dbjjncg473hc73a2b1u0",
+  "revision": "e4ce9068e13f188cadba0c1d2700c3a136ee6625",
+  "expired_lease_recovery": {
+    "job_id": "9bba4b3d-e283-4dc4-a94e-2488aac73ec1",
+    "status": "succeeded",
+    "attempts": 2,
+    "expired_owner_replaced": true
+  },
+  "mock_effect_count": 1,
+  "secure_httponly_samesite_strict_cookie": true,
+  "foreign_origin_rejected": true
+}
