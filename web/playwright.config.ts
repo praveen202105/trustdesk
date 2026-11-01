@@ -1,0 +1,2 @@
+import {defineConfig} from "@playwright/test";
+export default defineConfig({testDir:"./tests",fullyParallel:false,retries:process.env.CI?1:0,use:{baseURL:"http://localhost:3000",trace:"retain-on-failure"},webServer:[{command:"../backend/.venv/bin/uvicorn trustdesk.main:app --app-dir ../backend --port 8000",url:"http://localhost:8000/api/v1/health",reuseExistingServer:!process.env.CI},{command:"npm run start",url:"http://localhost:3000",reuseExistingServer:!process.env.CI}]});
