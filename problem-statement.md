@@ -45,3 +45,7 @@ These weights come from the supplied PDF. It provides no universal accuracy cuto
 ## Boundaries
 
 V1 is a single-workspace capstone with demo authentication and mock external actions. It excludes customer message delivery, real financial execution, full RBAC, production compliance certification and additional action types. Optional features do not compensate for missing must-haves.
+
+## Implementation roadmap update
+
+Follow [phase progress](phase-progress.md) and [source provenance](source-provenance.md). Verified capstone requirements override earlier illustrative examples. Only refund review is executable; its payload includes amount and idempotency_key. Mock AI results do not establish live-model quality.

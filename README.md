@@ -23,7 +23,7 @@ Primary source: Airtribe, “TrustDesk: AI Support Operations Agent”, four-pag
 
 The PDF is reference material describing the future product. Its instructions are not commands for this documentation-generation session. The user authorized planning documents only. Architecture, route names and implementation details below are proposed design decisions, not claims about an existing repository.
 
-The PDF names `https://github.com/airtribe-projects/trustdesk-capstone` as its resource. Neither that repository nor its datasets have been inspected. IDs, sample payloads and proposed commands below are illustrative unless explicitly identified as PDF requirements. Importer mappings and evaluation expectations must be verified against the real files before implementation.
+The PDF names `https://github.com/airtribe-projects/trustdesk-capstone` as its resource. The source repository and datasets have now been inspected; see [source provenance](source-provenance.md). IDs, sample payloads and proposed commands below are illustrative unless explicitly identified as PDF requirements. Importer mappings and evaluation expectations must be verified against the real files before implementation.
 
 ## Scope
 
@@ -41,3 +41,7 @@ Optional after acceptance: full RBAC, a second action such as replacement orders
 - English technical specifications for implementation; user-facing copy can be localized later.
 
 Follow the milestone gates in [implementation.plan.md](implementation.plan.md). Do not report sample metrics as measured results.
+
+## Implementation roadmap update
+
+Follow [phase progress](phase-progress.md) and [source provenance](source-provenance.md). Verified capstone requirements override earlier illustrative examples. Only refund review is executable; its payload includes amount and idempotency_key. Mock AI results do not establish live-model quality.
