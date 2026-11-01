@@ -1,0 +1,22 @@
+{
+  "profile": "production",
+  "source_commit": "427966047682ab090656426a8af84617af13b3ab",
+  "postgres_major": 17,
+  "vector_version": "0.8.0",
+  "migration": "004",
+  "counts": {
+    "customers": 6,
+    "orders": 6,
+    "tickets": 8,
+    "documents": 8,
+    "chunks": 7,
+    "mock_effects": 1
+  },
+  "external_review_ids": [
+    "review_4af993b9-7e29-4cd5-a9ce-77998155828f"
+  ],
+  "job_status_counts": {
+    "succeeded": 35
+  },
+  "tls_required": true
+}

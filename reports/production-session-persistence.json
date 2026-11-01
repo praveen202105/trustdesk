@@ -1,0 +1,6 @@
+{
+  "profile": "production",
+  "before_revision": "427966047682ab090656426a8af84617af13b3ab",
+  "after_revision": "427966047682ab090656426a8af84617af13b3ab",
+  "authenticated_session_survived_service_restart": true
+}

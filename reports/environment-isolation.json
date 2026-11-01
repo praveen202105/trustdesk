@@ -1,0 +1,7 @@
+{
+  "separate_render_service_ids": true,
+  "separate_neon_projects": true,
+  "distinct_database_and_session_action_login_secrets": true,
+  "valid_staging_signed_cookie_rejected_in_production": true,
+  "staging_login_token_rejected_in_production": true
+}

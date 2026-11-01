@@ -1,0 +1,20 @@
+{
+  "profile": "production",
+  "service": {
+    "id": "srv-dbjjvnfb9u1s73e8q920",
+    "name": "trustdesk-praveen202105",
+    "type": "web_service",
+    "repo": "https://github.com/praveen202105/trustdesk",
+    "branch": "release/v1.0.0",
+    "autoDeploy": "no",
+    "autoDeployTrigger": "off",
+    "suspended": "not_suspended",
+    "url": "https://trustdesk-praveen202105.onrender.com",
+    "plan": "free",
+    "region": "singapore",
+    "env": "docker"
+  },
+  "configured_secret_values_absent_in_recent_logs": true,
+  "log_scan_limit": 300,
+  "note": "Focused scan of available provider logs, not a full redaction guarantee."
+}

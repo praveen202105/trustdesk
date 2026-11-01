@@ -32,7 +32,11 @@ The report includes source/implementation fingerprints, mode/model, corpus manif
 - Public repository and tested commit history with phase evidence.
 - Reproducible setup, environment template and runtime API documentation.
 - Measured evaluation and test/verification report with limitations.
-- Railway URLs, deployed revision and backup/rollback instructions after hosted verification.
+- Free Render production/staging URLs, exact deployed revision and verified backup/rollback evidence in release-verification.json.
 - Demo walkthrough/explainer material using fictional data, without credentials or private account screens.
 
 No real refund, account change, coupon or customer message is sent by this V1 app. Live-model claims require separately labeled live-provider evaluation.
+
+## Hosted handoff
+
+Production: https://trustdesk-praveen202105.onrender.com. Staging: https://trustdesk-staging-praveen202105.onrender.com. Release v1.0.0 deploys commit 427966047682ab090656426a8af84617af13b3ab. The operator receives the hosted demo token privately; never publish it in this repository or use the public local token as a hosted credential. See [release report](reports/release-verification.json) and [free-host runbook](free-deployment.md) for actual results and recovery steps. Both free hosts may sleep or suspend at quota limits; AI remains in mock mode.
