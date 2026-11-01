@@ -32,7 +32,7 @@ def test_historical_window_and_final_sale(database):
     with database() as session:
         context = context_for(session, "tkt_9001")
         assert return_eligible(context)
-        for day, expected in (("2026-07-01T23:59:00+05:30",True),("2026-07-02T00:00:00+05:30",False)):
+        for day, expected in (("2026-07-01T23:59:00+05:30", True), ("2026-07-02T00:00:00+05:30", False)):
             altered = copy.deepcopy(context)
             altered["ticket"]["created_at"] = day
             assert return_eligible(altered) is expected
@@ -55,7 +55,11 @@ def test_adversarial_and_safety_cases(database):
 def test_unseen_content_does_not_use_expected_labels(database):
     with database.begin() as session:
         row = session.get(Ticket, "tkt_9008")
-        row.data = {**row.data, "subject":"Unrecognized request", "body":"Please explain an unsupported service."}
+        row.data = {
+            **row.data,
+            "subject": "Unrecognized request",
+            "body": "Please explain an unsupported service.",
+        }
         row.checksum = checksum(row.data)
         row.created_at = datetime.fromisoformat(row.data["created_at"])
         assert decision(context_for(session, row.id))["escalation_required"]

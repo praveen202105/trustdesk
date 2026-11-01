@@ -47,8 +47,15 @@ def login(body: LoginBody, request: Request, response: Response):
     attempts.append(time.monotonic())
     if not hmac.compare_digest(body.token, settings.demo_login_token):
         raise HTTPException(401, "INVALID_TOKEN")
-    response.set_cookie("trustdesk_session", serializer.dumps({"actor": "demo-agent"}), max_age=28800,
-                        httponly=True, secure=settings.secure_cookies, samesite="strict", path="/")
+    response.set_cookie(
+        "trustdesk_session",
+        serializer.dumps({"actor": "demo-agent"}),
+        max_age=28800,
+        httponly=True,
+        secure=settings.secure_cookies,
+        samesite="strict",
+        path="/",
+    )
 
 
 @router.delete("/auth/session", status_code=204)
@@ -57,8 +64,12 @@ def logout(response: Response):
 
 
 def latest(session, ticket_id: str, kind: str) -> dict[str, Any] | None:
-    row = session.scalar(select(Artifact).where(Artifact.ticket_id == ticket_id, Artifact.kind == kind)
-                         .order_by(Artifact.created_at.desc(), Artifact.id.desc()).limit(1))
+    row = session.scalar(
+        select(Artifact)
+        .where(Artifact.ticket_id == ticket_id, Artifact.kind == kind)
+        .order_by(Artifact.created_at.desc(), Artifact.id.desc())
+        .limit(1)
+    )
     return {"id": row.id, **row.data, "context_hash": row.context_hash} if row else None
 
 
@@ -70,8 +81,13 @@ def get_ticket(session, ticket_id: str) -> Ticket:
 
 
 @router.get("/tickets")
-def tickets(limit: int = Query(default=25, ge=1, le=100), cursor: str | None = None,
-            category: str | None = None, priority: str | None = None, escalation: bool | None = None):
+def tickets(
+    limit: int = Query(default=25, ge=1, le=100),
+    cursor: str | None = None,
+    category: str | None = None,
+    priority: str | None = None,
+    escalation: bool | None = None,
+):
     after = ""
     if cursor:
         try:
@@ -90,10 +106,17 @@ def tickets(limit: int = Query(default=25, ge=1, le=100), cursor: str | None = N
             if escalation is not None and (not triage or triage["escalation_required"] != escalation):
                 continue
             customer = session.get(Customer, row.customer_id)
-            items.append({**row.data, "customer_name": customer.data["name"] if customer else "Unknown",
-                          "triage": triage})
+            items.append(
+                {
+                    **row.data,
+                    "customer_name": customer.data["name"] if customer else "Unknown",
+                    "triage": triage,
+                }
+            )
         page = items[:limit]
-        next_cursor = base64.urlsafe_b64encode(page[-1]["ticket_id"].encode()).decode() if len(items) > limit else None
+        next_cursor = (
+            base64.urlsafe_b64encode(page[-1]["ticket_id"].encode()).decode() if len(items) > limit else None
+        )
         return {"items": page, "next_cursor": next_cursor, "mode": settings.ai_provider}
 
 
@@ -105,29 +128,43 @@ def ticket_detail(ticket_id: str):
         order = session.get(Order, ticket.order_id) if ticket.order_id else None
         if order and order.customer_id != ticket.customer_id:
             raise HTTPException(403, "CONTEXT_OWNERSHIP_MISMATCH")
-        return {"ticket": ticket.data,
-                "customer": {k: v for k, v in customer.data.items() if k in
-                             ("customer_id", "name", "tier", "country", "verified")} if customer else None,
-                "order": order.data if order else None,
-                "triage": latest(session, ticket_id, "triage"),
-                "draft": latest(session, ticket_id, "draft"),
-                "warnings": [] if order else ["Order context is unavailable"]}
+        return {
+            "ticket": ticket.data,
+            "customer": {
+                k: v
+                for k, v in customer.data.items()
+                if k in ("customer_id", "name", "tier", "country", "verified")
+            }
+            if customer
+            else None,
+            "order": order.data if order else None,
+            "triage": latest(session, ticket_id, "triage"),
+            "draft": latest(session, ticket_id, "draft"),
+            "warnings": [] if order else ["Order context is unavailable"],
+        }
 
 
 @router.get("/jobs/{job_id}")
 def job_status(job_id: str):
     from .models import Job
+
     with SessionLocal() as session:
         job = session.get(Job, job_id)
         if not job:
             raise HTTPException(404, "RESOURCE_NOT_FOUND")
-        return {"job_id": job.id, "status": job.status, "result": job.result,
-                "error": job.error, "attempts": job.attempts}
+        return {
+            "job_id": job.id,
+            "status": job.status,
+            "result": job.result,
+            "error": job.error,
+            "attempts": job.attempts,
+        }
 
 
 @router.get("/knowledge/search")
 def knowledge_search(query: str = Query(min_length=1, max_length=2000)):
     from .knowledge import retrieve
+
     with SessionLocal() as session:
         return {"query": query, "results": retrieve(session, query)}
 
@@ -135,6 +172,7 @@ def knowledge_search(query: str = Query(min_length=1, max_length=2000)):
 @router.get("/knowledge/documents/{document_id}")
 def knowledge_document(document_id: str, version_hash: str | None = None):
     from .models import Document, DocumentVersion
+
     with SessionLocal() as session:
         doc = session.get(Document, document_id)
         if not doc:
@@ -143,8 +181,13 @@ def knowledge_document(document_id: str, version_hash: str | None = None):
         saved = session.get(DocumentVersion, document_id + ":" + version)
         if not saved:
             raise HTTPException(404, "RESOURCE_NOT_FOUND")
-        return {"document_id": doc.id, "title": saved.title, "content": saved.content,
-                "version_hash": version, "trusted_policy": doc.trusted_policy}
+        return {
+            "document_id": doc.id,
+            "title": saved.title,
+            "content": saved.content,
+            "version_hash": version,
+            "trusted_policy": doc.trusted_policy,
+        }
 
 
 class EmptyBody(StrictBody):
@@ -154,20 +197,24 @@ class EmptyBody(StrictBody):
 @router.post("/tickets/{ticket_id}/triage")
 def submit_triage(ticket_id: str, body: EmptyBody, request: Request):
     from .jobs import enqueue, mutate
+
     def operation(session):
         get_ticket(session, ticket_id)
         return enqueue(session, "triage", ticket_id)
+
     return mutate(request, body.model_dump(), operation, factory=SessionLocal)
 
 
 @router.post("/tickets/{ticket_id}/drafts")
 def submit_draft(ticket_id: str, body: EmptyBody, request: Request):
     from .jobs import enqueue, mutate
+
     def operation(session):
         get_ticket(session, ticket_id)
         if not latest(session, ticket_id, "triage"):
             raise HTTPException(409, "TRIAGE_REQUIRED")
         return enqueue(session, "draft", ticket_id)
+
     return mutate(request, body.model_dump(), operation, factory=SessionLocal)
 
 
@@ -175,18 +222,24 @@ def submit_draft(ticket_id: str, body: EmptyBody, request: Request):
 def list_drafts(ticket_id: str):
     with SessionLocal() as session:
         get_ticket(session, ticket_id)
-        rows = session.scalars(select(Artifact).where(Artifact.ticket_id == ticket_id, Artifact.kind == "draft")
-                               .order_by(Artifact.created_at.desc()).limit(100)).all()
+        rows = session.scalars(
+            select(Artifact)
+            .where(Artifact.ticket_id == ticket_id, Artifact.kind == "draft")
+            .order_by(Artifact.created_at.desc())
+            .limit(100)
+        ).all()
         return {"items": [{"id": row.id, **row.data} for row in rows]}
 
 
 @router.get("/tickets/{ticket_id}/traces")
 def traces(ticket_id: str):
     from .models import Trace
+
     with SessionLocal() as session:
         get_ticket(session, ticket_id)
-        rows = session.scalars(select(Trace).where(Trace.ticket_id == ticket_id)
-                               .order_by(Trace.created_at.desc()).limit(100)).all()
+        rows = session.scalars(
+            select(Trace).where(Trace.ticket_id == ticket_id).order_by(Trace.created_at.desc()).limit(100)
+        ).all()
         return {"items": [{"id": row.id, "run_type": row.run_type, **row.data} for row in rows]}
 
 
@@ -203,18 +256,29 @@ class DecisionBody(StrictBody):
 def create_proposal(ticket_id: str, body: ProposalBody, request: Request):
     from .actions import propose
     from .jobs import mutate
-    return mutate(request, body.model_dump(), lambda session: propose(session, ticket_id, body.draft_id),
-                  status=201, factory=SessionLocal)
+
+    return mutate(
+        request,
+        body.model_dump(),
+        lambda session: propose(session, ticket_id, body.draft_id),
+        status=201,
+        factory=SessionLocal,
+    )
 
 
 @router.get("/tickets/{ticket_id}/action-proposals")
 def ticket_proposals(ticket_id: str):
     from .actions import proposal_json
     from .models import Proposal
+
     with SessionLocal() as session:
         get_ticket(session, ticket_id)
-        rows = session.scalars(select(Proposal).where(Proposal.ticket_id == ticket_id)
-                               .order_by(Proposal.created_at.desc()).limit(100)).all()
+        rows = session.scalars(
+            select(Proposal)
+            .where(Proposal.ticket_id == ticket_id)
+            .order_by(Proposal.created_at.desc())
+            .limit(100)
+        ).all()
         return {"items": [proposal_json(row) for row in rows]}
 
 
@@ -222,6 +286,7 @@ def ticket_proposals(ticket_id: str):
 def get_proposal(proposal_id: str):
     from .actions import proposal_json
     from .models import Proposal
+
     with SessionLocal() as session:
         row = session.get(Proposal, proposal_id)
         if not row:
@@ -233,6 +298,11 @@ def get_proposal(proposal_id: str):
 def decision_proposal(proposal_id: str, body: DecisionBody, request: Request):
     from .actions import decide
     from .jobs import mutate
-    return mutate(request, body.model_dump(),
-                  lambda session: decide(session, proposal_id, body.decision, body.reason, request.state.actor),
-                  status=200, factory=SessionLocal)
+
+    return mutate(
+        request,
+        body.model_dump(),
+        lambda session: decide(session, proposal_id, body.decision, body.reason, request.state.actor),
+        status=200,
+        factory=SessionLocal,
+    )

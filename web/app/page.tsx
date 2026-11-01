@@ -1,21 +1,382 @@
 "use client";
-import {useEffect,useState,useRef} from "react";
-import {ShieldCheck,Inbox,BarChart3,LogOut,Search,ChevronRight,UserRound,Package,LockKeyhole,CheckCircle2} from "lucide-react";
-import type {Detail,Ticket} from "./types";
+import { useEffect, useState, useRef } from "react";
+import {
+  ShieldCheck,
+  Inbox,
+  BarChart3,
+  LogOut,
+  Search,
+  ChevronRight,
+  UserRound,
+  Package,
+  LockKeyhole,
+  CheckCircle2,
+} from "lucide-react";
+import type { Detail, Ticket } from "./types";
 
 import Assistant from "./assistant";
-import {api} from "./api-client";
+import { api } from "./api-client";
 
-export default function Home(){
- const [authenticated,setAuthenticated]=useState(false),[token,setToken]=useState(""),[error,setError]=useState("");
- const selection=useRef(0),activeTicket=useRef("");
- const [mode,setMode]=useState("mock");
- const [tickets,setTickets]=useState<Ticket[]>([]),[detail,setDetail]=useState<Detail|null>(null),[query,setQuery]=useState("");
- const load=async()=>{const data=await api<{items:Ticket[];mode:string}>("/tickets");setTickets(data.items);setMode(data.mode);setAuthenticated(true);return data.items;};
- useEffect(()=>{let active=true;api<{items:Ticket[];mode:string}>("/tickets").then(async data=>{if(!active)return;setTickets(data.items);setMode(data.mode);setAuthenticated(true);if(data.items[0]&&selection.current===0){const seq=++selection.current;activeTicket.current=data.items[0].ticket_id;const d=await api<Detail>("/tickets/"+data.items[0].ticket_id);if(active&&seq===selection.current)setDetail(d);}}).catch(()=>{});return()=>{active=false;};},[]);
- async function open(id:string){const seq=++selection.current;activeTicket.current=id;setDetail(null);setError("");try{const d=await api<Detail>("/tickets/"+id);if(seq===selection.current)setDetail(d);}catch(e){if(seq===selection.current)setError((e as Error).message);}}
- async function login(e:React.FormEvent){e.preventDefault();setError("");try{await api("/auth/session","POST",{token});setToken("");const items=await load();if(items[0])await open(items[0].ticket_id);}catch(e){setError((e as Error).message);}}
- if(!authenticated)return <div className="login-shell"><div className="login-brand"><ShieldCheck size={36}/><h1>TrustDesk<span>.</span></h1><p>Better answers.<br/>Built on evidence.</p><small>Your support workspace, with AI assistance<br/>and a human in control.</small></div><form className="login-card" onSubmit={login}><span className="eyebrow">SUPPORT OPERATIONS</span><h2>Welcome to your workspace</h2><p>Sign in with your demo access token.</p><label htmlFor="token">Access token</label><input id="token" type="password" value={token} onChange={e=>setToken(e.target.value)} required autoComplete="off" placeholder="Enter access token"/><button className="primary" type="submit">Open workspace <ChevronRight size={16}/></button>{error&&<div className="error" role="alert">{error}</div>}<div className="login-note"><LockKeyhole size={14}/> Internal workspace · human-approved actions</div></form></div>;
- const visible=tickets.filter(t=>(t.subject+" "+t.customer_name+" "+t.ticket_id).toLowerCase().includes(query.toLowerCase()));
- return <div className="app"><aside className="sidebar"><div className="brand"><ShieldCheck size={27}/><span>TrustDesk<span className="mint">.</span></span></div><div className="workspace-label">WORKSPACE</div><button className="nav active"><Inbox size={18}/> Inbox <b>{tickets.length}</b></button><button className="nav" disabled title="Available after evaluation implementation"><BarChart3 size={18}/> Evaluations</button><div className="sidebar-bottom"><div className="safety-note"><ShieldCheck size={18}/><span>Human oversight<br/><small>Every sensitive action reviewed</small></span></div><div className="agent"><span className="avatar">PG</span><span>Support agent<small>Demo workspace</small></span><button aria-label="Sign out" onClick={async()=>{await api("/auth/session","DELETE");setAuthenticated(false);}}><LogOut size={16}/></button></div></div></aside><div className="workspace"><header className="topbar"><span>Workspace <ChevronRight size={13}/> <strong>Inbox</strong></span><div className="mode"><i/> {mode==="mock"?"MOCK AI":"LIVE AI"} <span>Demo environment</span></div></header><div className="page-heading"><div><span className="eyebrow">SUPPORT OPERATIONS</span><h1>Your inbox, in focus</h1><p>Find the right answer. Keep the human touch.</p></div><div className="stat"><b>{tickets.length}</b><span>Open tickets</span></div></div>{error&&<div className="error" role="alert">{error}</div>}<div className="inbox"><section className="ticket-list"><div className="list-title">All tickets <span>{visible.length}</span></div><div className="search"><Search size={16}/><input aria-label="Search tickets" placeholder="Search tickets…" value={query} onChange={e=>setQuery(e.target.value)}/></div><div className="ticket-items">{visible.map(t=><button className={"ticket-row "+(detail?.ticket.ticket_id===t.ticket_id?"selected":"")} key={t.ticket_id} onClick={()=>open(t.ticket_id)}><div className="ticket-meta"><span>{t.ticket_id.replace("tkt_","#")}</span><span className={"badge "+(t.triage?.priority||"")}>{t.triage?.priority||"New"}</span></div><h3>{t.subject}</h3><p>{t.body}</p><div className="ticket-footer"><UserRound size={12}/>{t.customer_name}<span>{new Date(t.created_at).toLocaleDateString("en-GB",{day:"numeric",month:"short"})}</span></div></button>)}{!visible.length&&<div className="empty">No tickets match your search.</div>}</div></section>{detail?<><section className="conversation"><div className="conversation-header"><div className="ticket-meta"><span>{detail.ticket.ticket_id}</span><span className="badge open">Open</span></div><h2>{detail.ticket.subject}</h2><p>{detail.customer?.name} <span>·</span> {new Date(detail.ticket.created_at).toLocaleString()}</p></div><div className="conversation-content"><div className="message"><div className="message-author"><span className="avatar light">{detail.customer?.name.charAt(0)||"C"}</span><div><strong>{detail.customer?.name}</strong><small>Customer message</small></div></div><p>{detail.ticket.body}</p></div><Assistant key={detail.ticket.ticket_id} detail={detail} onRefresh={async()=>{if(activeTicket.current===detail.ticket.ticket_id){await open(detail.ticket.ticket_id);await load();}}}/></div></section><aside className="context"><div className="context-title"><UserRound size={16}/> Customer context</div><h3>{detail.customer?.name||"Unknown customer"}</h3><div className="customer-badges"><span className="badge tier">{detail.customer?.tier||"standard"}</span>{detail.customer?.verified&&<span className="verified"><CheckCircle2 size={13}/> Verified</span>}</div><dl><dt>Customer ID</dt><dd>{detail.ticket.customer_id}</dd><dt>Country</dt><dd>{detail.customer?.country||"—"}</dd></dl><div className="divider"/><div className="context-title"><Package size={16}/> Order details</div>{detail.order?<><h4>{detail.order.order_id}</h4><span className="badge open">{detail.order.status}</span><div className="product">{detail.order.items.map(item=><div key={item.sku}><div className="product-icon"><Package size={20}/></div><span>{item.name}<small>Qty {item.quantity} · {item.sku}</small></span></div>)}</div><dl><dt>Order total</dt><dd>{new Intl.NumberFormat("en-IN",{style:"currency",currency:detail.order.currency}).format(detail.order.total)}</dd><dt>Payment</dt><dd>{detail.order.payment_status}</dd></dl></>:<p className="empty">No order linked</p>}<div className="policy-note"><ShieldCheck size={17}/><p>Evidence before action<br/><span>Policy eligibility uses the ticket date.</span></p></div></aside></>:<section className="empty">Select a ticket to begin.</section>}</div></div></div>;
+export default function Home() {
+  const [authenticated, setAuthenticated] = useState(false),
+    [token, setToken] = useState(""),
+    [error, setError] = useState("");
+  const selection = useRef(0),
+    activeTicket = useRef("");
+  const [mode, setMode] = useState("mock");
+  const [tickets, setTickets] = useState<Ticket[]>([]),
+    [detail, setDetail] = useState<Detail | null>(null),
+    [query, setQuery] = useState("");
+  const load = async () => {
+    const data = await api<{ items: Ticket[]; mode: string }>("/tickets");
+    setTickets(data.items);
+    setMode(data.mode);
+    setAuthenticated(true);
+    return data.items;
+  };
+  useEffect(() => {
+    let active = true;
+    api<{ items: Ticket[]; mode: string }>("/tickets")
+      .then(async (data) => {
+        if (!active) return;
+        setTickets(data.items);
+        setMode(data.mode);
+        setAuthenticated(true);
+        if (data.items[0] && selection.current === 0) {
+          const seq = ++selection.current;
+          activeTicket.current = data.items[0].ticket_id;
+          const d = await api<Detail>("/tickets/" + data.items[0].ticket_id);
+          if (active && seq === selection.current) setDetail(d);
+        }
+      })
+      .catch(() => {});
+    return () => {
+      active = false;
+    };
+  }, []);
+  useEffect(() => {
+    const expired = () => {
+      selection.current++;
+      activeTicket.current = "";
+      setAuthenticated(false);
+      setDetail(null);
+      setTickets([]);
+    };
+    window.addEventListener("trustdesk:session-expired", expired);
+    return () =>
+      window.removeEventListener("trustdesk:session-expired", expired);
+  }, []);
+  async function open(id: string) {
+    const seq = ++selection.current;
+    activeTicket.current = id;
+    setDetail(null);
+    setError("");
+    try {
+      const d = await api<Detail>("/tickets/" + id);
+      if (seq === selection.current) setDetail(d);
+    } catch (e) {
+      if (seq === selection.current) setError((e as Error).message);
+    }
+  }
+  async function login(e: React.FormEvent) {
+    e.preventDefault();
+    setError("");
+    try {
+      await api("/auth/session", "POST", { token });
+      setToken("");
+      const items = await load();
+      if (items[0]) await open(items[0].ticket_id);
+    } catch (e) {
+      setError((e as Error).message);
+    }
+  }
+  if (!authenticated)
+    return (
+      <div className="login-shell">
+        <div className="login-brand">
+          <ShieldCheck size={36} />
+          <h1>
+            TrustDesk<span>.</span>
+          </h1>
+          <p>
+            Better answers.
+            <br />
+            Built on evidence.
+          </p>
+          <small>
+            Your support workspace, with AI assistance
+            <br />
+            and a human in control.
+          </small>
+        </div>
+        <form className="login-card" onSubmit={login}>
+          <span className="eyebrow">SUPPORT OPERATIONS</span>
+          <h2>Welcome to your workspace</h2>
+          <p>Sign in with your demo access token.</p>
+          <label htmlFor="token">Access token</label>
+          <input
+            id="token"
+            type="password"
+            value={token}
+            onChange={(e) => setToken(e.target.value)}
+            required
+            autoComplete="off"
+            placeholder="Enter access token"
+          />
+          <button className="primary" type="submit">
+            Open workspace <ChevronRight size={16} />
+          </button>
+          {error && (
+            <div className="error" role="alert">
+              {error}
+            </div>
+          )}
+          <div className="login-note">
+            <LockKeyhole size={14} /> Internal workspace · human-approved
+            actions
+          </div>
+        </form>
+      </div>
+    );
+  const visible = tickets.filter((t) =>
+    (t.subject + " " + t.customer_name + " " + t.ticket_id)
+      .toLowerCase()
+      .includes(query.toLowerCase()),
+  );
+  return (
+    <div className="app">
+      <aside className="sidebar">
+        <div className="brand">
+          <ShieldCheck size={27} />
+          <span>
+            TrustDesk<span className="mint">.</span>
+          </span>
+        </div>
+        <div className="workspace-label">WORKSPACE</div>
+        <button className="nav active">
+          <Inbox size={18} /> Inbox <b>{tickets.length}</b>
+        </button>
+        <button
+          className="nav"
+          disabled
+          title="Available after evaluation implementation"
+        >
+          <BarChart3 size={18} /> Evaluations
+        </button>
+        <div className="sidebar-bottom">
+          <div className="safety-note">
+            <ShieldCheck size={18} />
+            <span>
+              Human oversight
+              <br />
+              <small>Every sensitive action reviewed</small>
+            </span>
+          </div>
+          <div className="agent">
+            <span className="avatar">PG</span>
+            <span>
+              Support agent<small>Demo workspace</small>
+            </span>
+            <button
+              aria-label="Sign out"
+              onClick={async () => {
+                await api("/auth/session", "DELETE");
+                setAuthenticated(false);
+              }}
+            >
+              <LogOut size={16} />
+            </button>
+          </div>
+        </div>
+      </aside>
+      <div className="workspace">
+        <header className="topbar">
+          <span>
+            Workspace <ChevronRight size={13} /> <strong>Inbox</strong>
+          </span>
+          <div className="mode">
+            <i /> {mode === "mock" ? "MOCK AI" : "LIVE AI"}{" "}
+            <span>Demo environment</span>
+          </div>
+        </header>
+        <div className="page-heading">
+          <div>
+            <span className="eyebrow">SUPPORT OPERATIONS</span>
+            <h1>Your inbox, in focus</h1>
+            <p>Find the right answer. Keep the human touch.</p>
+          </div>
+          <div className="stat">
+            <b>{tickets.length}</b>
+            <span>Open tickets</span>
+          </div>
+        </div>
+        {error && (
+          <div className="error" role="alert">
+            {error}
+          </div>
+        )}
+        <div className="inbox">
+          <section className="ticket-list">
+            <div className="list-title">
+              All tickets <span>{visible.length}</span>
+            </div>
+            <div className="search">
+              <Search size={16} />
+              <input
+                aria-label="Search tickets"
+                placeholder="Search tickets…"
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+              />
+            </div>
+            <div className="ticket-items">
+              {visible.map((t) => (
+                <button
+                  className={
+                    "ticket-row " +
+                    (detail?.ticket.ticket_id === t.ticket_id ? "selected" : "")
+                  }
+                  key={t.ticket_id}
+                  onClick={() => open(t.ticket_id)}
+                >
+                  <div className="ticket-meta">
+                    <span>{t.ticket_id.replace("tkt_", "#")}</span>
+                    <span className={"badge " + (t.triage?.priority || "")}>
+                      {t.triage?.priority || "New"}
+                    </span>
+                  </div>
+                  <h3>{t.subject}</h3>
+                  <p>{t.body}</p>
+                  <div className="ticket-footer">
+                    <UserRound size={12} />
+                    {t.customer_name}
+                    <span>
+                      {new Date(t.created_at).toLocaleDateString("en-GB", {
+                        day: "numeric",
+                        month: "short",
+                      })}
+                    </span>
+                  </div>
+                </button>
+              ))}
+              {!visible.length && (
+                <div className="empty">No tickets match your search.</div>
+              )}
+            </div>
+          </section>
+          {detail ? (
+            <>
+              <section className="conversation">
+                <div className="conversation-header">
+                  <div className="ticket-meta">
+                    <span>{detail.ticket.ticket_id}</span>
+                    <span className="badge open">Open</span>
+                  </div>
+                  <h2>{detail.ticket.subject}</h2>
+                  <p>
+                    {detail.customer?.name} <span>·</span>{" "}
+                    {new Date(detail.ticket.created_at).toLocaleString()}
+                  </p>
+                </div>
+                <div className="conversation-content">
+                  <div className="message">
+                    <div className="message-author">
+                      <span className="avatar light">
+                        {detail.customer?.name.charAt(0) || "C"}
+                      </span>
+                      <div>
+                        <strong>{detail.customer?.name}</strong>
+                        <small>Customer message</small>
+                      </div>
+                    </div>
+                    <p>{detail.ticket.body}</p>
+                  </div>
+                  <Assistant
+                    key={detail.ticket.ticket_id}
+                    detail={detail}
+                    onRefresh={async () => {
+                      if (activeTicket.current === detail.ticket.ticket_id) {
+                        await open(detail.ticket.ticket_id);
+                        await load();
+                      }
+                    }}
+                  />
+                </div>
+              </section>
+              <aside className="context">
+                <div className="context-title">
+                  <UserRound size={16} /> Customer context
+                </div>
+                <h3>{detail.customer?.name || "Unknown customer"}</h3>
+                <div className="customer-badges">
+                  <span className="badge tier">
+                    {detail.customer?.tier || "standard"}
+                  </span>
+                  {detail.customer?.verified && (
+                    <span className="verified">
+                      <CheckCircle2 size={13} /> Verified
+                    </span>
+                  )}
+                </div>
+                <dl>
+                  <dt>Customer ID</dt>
+                  <dd>{detail.ticket.customer_id}</dd>
+                  <dt>Country</dt>
+                  <dd>{detail.customer?.country || "—"}</dd>
+                </dl>
+                <div className="divider" />
+                <div className="context-title">
+                  <Package size={16} /> Order details
+                </div>
+                {detail.order ? (
+                  <>
+                    <h4>{detail.order.order_id}</h4>
+                    <span className="badge open">{detail.order.status}</span>
+                    <div className="product">
+                      {detail.order.items.map((item) => (
+                        <div key={item.sku}>
+                          <div className="product-icon">
+                            <Package size={20} />
+                          </div>
+                          <span>
+                            {item.name}
+                            <small>
+                              Qty {item.quantity} · {item.sku}
+                            </small>
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                    <dl>
+                      <dt>Order total</dt>
+                      <dd>
+                        {new Intl.NumberFormat("en-IN", {
+                          style: "currency",
+                          currency: detail.order.currency,
+                        }).format(detail.order.total)}
+                      </dd>
+                      <dt>Payment</dt>
+                      <dd>{detail.order.payment_status}</dd>
+                    </dl>
+                  </>
+                ) : (
+                  <p className="empty">No order linked</p>
+                )}
+                <div className="policy-note">
+                  <ShieldCheck size={17} />
+                  <p>
+                    Evidence before action
+                    <br />
+                    <span>Policy eligibility uses the ticket date.</span>
+                  </p>
+                </div>
+              </aside>
+            </>
+          ) : (
+            <section className="empty">Select a ticket to begin.</section>
+          )}
+        </div>
+      </div>
+    </div>
+  );
 }

@@ -19,10 +19,12 @@ def context_for(session, ticket_id: str) -> dict:
         raise ValueError("CONTEXT_OWNERSHIP_MISMATCH")
     policies = session.scalars(select(Document).order_by(Document.id)).all()
     # Expected labels and private account fields cannot enter the generation context.
-    return {"ticket": ticket.data,
-            "customer": {k: v for k, v in customer.data.items() if k in ("name", "tier", "verified")},
-            "order": order.data if order else None,
-            "policies": {d.id: {"hash": d.checksum, "trusted": d.trusted_policy} for d in policies}}
+    return {
+        "ticket": ticket.data,
+        "customer": {k: v for k, v in customer.data.items() if k in ("name", "tier", "verified")},
+        "order": order.data if order else None,
+        "policies": {d.id: {"hash": d.checksum, "trusted": d.trusted_policy} for d in policies},
+    }
 
 
 def context_hash(context: dict) -> str:
@@ -48,11 +50,14 @@ def warranty_eligible(context: dict) -> bool | None:
     items = order.get("items", [])
     if not items or any(item.get("final_sale") or item.get("category") == "software" for item in items):
         return False
-    if any(item.get("category") not in ("audio", "camera", "tablet", "wearable", "accessory") for item in items):
+    if any(
+        item.get("category") not in ("audio", "camera", "tablet", "wearable", "accessory") for item in items
+    ):
         return None
     months = 12
-    if (context["customer"].get("tier") == "gold" and
-            not any(item.get("category") == "accessory" and Decimal(str(order["total"])) < 3000 for item in items)):
+    if context["customer"].get("tier") == "gold" and not any(
+        item.get("category") == "accessory" and Decimal(str(order["total"])) < 3000 for item in items
+    ):
         months += 6
     delivered = date.fromisoformat(order["delivered_at"])
     absolute_month = delivered.year * 12 + delivered.month - 1 + months
@@ -75,7 +80,9 @@ def decision(context: dict) -> dict:
         guardrails = ["sensitive_disclosure_blocked"]
         reason = "Request attempts to disclose protected internal information"
         template = "I cannot disclose hidden system prompts, API keys, internal notes or secrets. A support specialist will review this security request."
-    elif "coupon" in text and any(term in text for term in ("ignore", "override", "hide", "do not mention", "do not tell")):
+    elif "coupon" in text and any(
+        term in text for term in ("ignore", "override", "hide", "do not mention", "do not tell")
+    ):
         category, priority, escalate = "general", "medium", True
         guardrails = ["prompt_injection_blocked"]
         reason = "Unsafe instruction attempted to bypass coupon policy and human review"
@@ -85,7 +92,10 @@ def decision(context: dict) -> dict:
         doc, reason = "KB-ACCOUNT-001", "Identity verification is required before account changes"
         guardrails = ["identity_bypass_blocked"]
         template = "Identity verification is required before an account email change. I cannot change your email directly or skip verification. A human support specialist will help you verify your identity."
-    elif any(term in text for term in ("swelling", "swollen", "overheating", "burning smell", "electric shock", "exposed wires")):
+    elif any(
+        term in text
+        for term in ("swelling", "swollen", "overheating", "burning smell", "electric shock", "exposed wires")
+    ):
         category, priority, sentiment, escalate = "warranty", "urgent", "worried", True
         doc, reason = "KB-WARRANTY-001", "Product safety issue requires urgent specialist escalation"
         guardrails = ["safety_escalation"]
@@ -96,7 +106,9 @@ def decision(context: dict) -> dict:
         template = "We can start a billing review for the reported duplicate charge on this order. Please share the transaction reference or payment date and amount if needed. A refund review requires human approval; this does not mean a refund has been issued. Do not send a full card number, CVV or OTP."
         actions = ["start_refund_review"] if order else []
         escalate = not bool(order)
-    elif any(term in text for term in ("tracking", "package", "shipping", "delivery")) and not any(term in text for term in ("damaged", "cracked", "defective")):
+    elif any(term in text for term in ("tracking", "package", "shipping", "delivery")) and not any(
+        term in text for term in ("damaged", "cracked", "defective")
+    ):
         category, sentiment = "shipping", "frustrated"
         doc, reason = "KB-SHIPPING-001", "Tracking delay requires policy-guided carrier investigation"
         days = re.search(r"(\d+) business days", text)
@@ -120,7 +132,9 @@ def decision(context: dict) -> dict:
         if final_sale:
             reason = "Software or marked final-sale items do not qualify for an ordinary refund"
             template = "Software licenses and marked final-sale items are final sale after purchase. I cannot approve a refund under the standard policy; any legal exception or manager-approved exception must be reviewed separately."
-        elif return_eligible(context) and any(term in text for term in ("damaged", "cracked", "defective", "unused", "different from")):
+        elif return_eligible(context) and any(
+            term in text for term in ("damaged", "cracked", "defective", "unused", "different from")
+        ):
             priority, sentiment = "medium", "frustrated"
             reason = "Damaged physical item reported within the seven-day return window"
             actions = ["create_replacement_order", "start_refund_review"]
@@ -131,20 +145,47 @@ def decision(context: dict) -> dict:
             template = "We cannot confirm standard return eligibility from the available evidence. A support specialist must review the delivery date, item status and any applicable exception."
     else:
         escalate = True
+    if re.search(
+        r"ignore.{0,30}(instructions|polic)|system override|approve every refund|hide.{0,20}(review|human)",
+        text,
+    ):
+        if "prompt_injection_blocked" not in guardrails:
+            guardrails.append("prompt_injection_blocked")
+        escalate = True
+        if not any(
+            item in guardrails
+            for item in ("identity_bypass_blocked", "sensitive_disclosure_blocked", "safety_escalation")
+        ):
+            template = "I cannot follow unsafe instructions or bypass policy. A human support specialist will review this request."
     if escalate:
         actions = ["escalate_to_human"]
     if not context["policies"].get(doc, {}).get("trusted"):
         escalate, actions = True, ["escalate_to_human"]
-        reason, template = "Policy evidence is missing or unapproved", "A support specialist must review this request because the policy evidence is unavailable."
-    return {"category": category, "priority": priority, "sentiment": sentiment,
-            "escalation_required": escalate, "reason": reason, "recommended_actions": actions,
-            "guardrails": guardrails, "policy_document": doc, "safe_template": template}
+        reason, template = (
+            "Policy evidence is missing or unapproved",
+            "A support specialist must review this request because the policy evidence is unavailable.",
+        )
+    return {
+        "category": category,
+        "priority": priority,
+        "sentiment": sentiment,
+        "escalation_required": escalate,
+        "reason": reason,
+        "recommended_actions": actions,
+        "guardrails": guardrails,
+        "policy_document": doc,
+        "safe_template": template,
+    }
 
 
 def action_arguments(context: dict, result: dict) -> dict | None:
     order = context.get("order")
-    if (not order or result["escalation_required"] or "start_refund_review" not in result["recommended_actions"]
-            or result["category"] not in ("refund", "billing")):
+    if (
+        not order
+        or result["escalation_required"]
+        or "start_refund_review" not in result["recommended_actions"]
+        or result["category"] not in ("refund", "billing")
+    ):
         return None
     amount = Decimal(str(order["total"]))
     if not amount.is_finite() or amount <= 0:

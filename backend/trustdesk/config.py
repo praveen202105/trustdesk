@@ -21,4 +21,15 @@ class Settings(BaseSettings):
     secure_cookies: bool = False
     revision: str = "development"
 
+
 settings = Settings()
+
+if settings.app_origin.startswith("https://"):
+    if (
+        settings.session_secret == "local-session-secret-change-before-hosting"
+        or settings.demo_login_token == "local-demo-only"
+        or settings.mock_action_secret == "local-actions-only"
+    ):
+        raise ValueError("Configure unique hosted secrets before enabling the public workspace")
+    if not settings.secure_cookies:
+        raise ValueError("HTTPS hosting requires secure cookies")

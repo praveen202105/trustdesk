@@ -7,8 +7,13 @@ from trustdesk.db import Base, engine
 
 def run_migrations():
     with engine.connect() as connection:
-        context.configure(connection=connection, target_metadata=Base.metadata, version_table_schema=settings.database_schema)
+        context.configure(
+            connection=connection,
+            target_metadata=Base.metadata,
+            version_table_schema=settings.database_schema,
+        )
         with context.begin_transaction():
             context.run_migrations()
+
 
 run_migrations()

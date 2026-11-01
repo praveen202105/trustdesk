@@ -30,8 +30,16 @@ def index_knowledge(session) -> int:
             chunks.append(current)
         for index, content in enumerate(chunks):
             chunk_id = checksum([doc.id, doc.checksum, index])
-            session.merge(Chunk(id=chunk_id, document_id=doc.id, version_hash=doc.checksum,
-                                content=content, embedding=embedding(content), embedding_model=embedding_version()))
+            session.merge(
+                Chunk(
+                    id=chunk_id,
+                    document_id=doc.id,
+                    version_hash=doc.checksum,
+                    content=content,
+                    embedding=embedding(content),
+                    embedding_model=embedding_version(),
+                )
+            )
             count += 1
     session.flush()
     return count
@@ -39,19 +47,29 @@ def index_knowledge(session) -> int:
 
 def retrieve(session, query: str) -> list[dict]:
     query_vector = embedding(query)
-    eligible = (Document.trusted_policy.is_(True), Chunk.version_hash == Document.checksum,
-                Chunk.embedding_model == embedding_version(), Chunk.embedding.is_not(None))
+    eligible = (
+        Document.trusted_policy.is_(True),
+        Chunk.version_hash == Document.checksum,
+        Chunk.embedding_model == embedding_version(),
+        Chunk.embedding.is_not(None),
+    )
     base = select(Chunk).join(Document).where(*eligible)
     chunks = session.scalars(base).all()
-    trusted_count = session.scalar(select(func.count()).select_from(Document).where(Document.trusted_policy.is_(True)))
+    trusted_count = session.scalar(
+        select(func.count()).select_from(Document).where(Document.trusted_policy.is_(True))
+    )
     if not chunks or len({x.document_id for x in chunks}) != trusted_count:
         raise HTTPException(503, "RETRIEVAL_UNAVAILABLE")
     if any(len(c.embedding) != settings.embedding_dimension for c in chunks):
         raise HTTPException(503, "EMBEDDING_DIMENSION_MISMATCH")
     text_vector = func.to_tsvector(literal_column("'english'"), Chunk.content)
     text_query = func.plainto_tsquery(literal_column("'english'"), query)
-    lexical = session.scalars(base.order_by(func.ts_rank(text_vector, text_query).desc(), Chunk.id).limit(12)).all()
-    semantic = session.scalars(base.order_by(Chunk.embedding.cosine_distance(query_vector), Chunk.id).limit(12)).all()
+    lexical = session.scalars(
+        base.order_by(func.ts_rank(text_vector, text_query).desc(), Chunk.id).limit(12)
+    ).all()
+    semantic = session.scalars(
+        base.order_by(Chunk.embedding.cosine_distance(query_vector), Chunk.id).limit(12)
+    ).all()
     scores: dict[str, float] = defaultdict(float)
     by_id = {c.id: c for c in chunks}
     for ranked in (lexical, semantic):
@@ -64,8 +82,15 @@ def retrieve(session, query: str) -> list[dict]:
         chunk = by_id[key]
         if per_doc[chunk.document_id] >= 2 or len(chunk.content) > budget:
             continue
-        selected.append({"document_id": chunk.document_id, "version_hash": chunk.version_hash,
-                         "chunk_id": chunk.id, "quote": chunk.content, "score": scores[key]})
+        selected.append(
+            {
+                "document_id": chunk.document_id,
+                "version_hash": chunk.version_hash,
+                "chunk_id": chunk.id,
+                "quote": chunk.content,
+                "score": scores[key],
+            }
+        )
         budget -= len(chunk.content)
         per_doc[chunk.document_id] += 1
         if len(selected) == 6:
@@ -80,8 +105,12 @@ def valid_citations(session, citations: list[dict], retrieved: list[dict]) -> bo
         doc = session.get(Document, citation.get("document_id"))
         if not chunk or not doc or not doc.trusted_policy or chunk.id not in allowed:
             return False
-        if (chunk.document_id != doc.id or chunk.version_hash != doc.checksum or
-                citation.get("version_hash") != chunk.version_hash or not citation.get("quote") or
-                citation["quote"] not in chunk.content):
+        if (
+            chunk.document_id != doc.id
+            or chunk.version_hash != doc.checksum
+            or citation.get("version_hash") != chunk.version_hash
+            or not citation.get("quote")
+            or citation["quote"] not in chunk.content
+        ):
             return False
     return True

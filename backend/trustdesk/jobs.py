@@ -10,7 +10,7 @@ from sqlalchemy import and_, or_, select, text, update
 
 from .db import SessionLocal
 from .ingest import checksum
-from .models import Idempotency, Job, now, uid
+from .models import Idempotency, Job, Trace, now, uid
 
 
 class TransientError(Exception):
@@ -24,8 +24,10 @@ class Completion:
 
 
 def advisory(session, value: str):
-    session.execute(text("SELECT pg_advisory_xact_lock(:key)"),
-                    {"key": int(hashlib.sha256(value.encode()).hexdigest()[:15], 16)})
+    session.execute(
+        text("SELECT pg_advisory_xact_lock(:key)"),
+        {"key": int(hashlib.sha256(value.encode()).hexdigest()[:15], 16)},
+    )
 
 
 def mutate(request: Request, body: dict, operation: Callable, status: int = 202, factory=SessionLocal):
@@ -55,30 +57,49 @@ def enqueue(session, kind: str, ticket_id: str | None = None, payload: dict | No
 
 def claim(factory=SessionLocal) -> dict | None:
     with factory.begin() as session:
-        job = session.scalar(select(Job).where(or_(
-            and_(Job.status == "queued", Job.available_at <= now()),
-            and_(Job.status == "running", Job.lease_until < now())))
-            .order_by(Job.available_at).with_for_update(skip_locked=True).limit(1))
+        job = session.scalar(
+            select(Job)
+            .where(
+                or_(
+                    and_(Job.status == "queued", Job.available_at <= now()),
+                    and_(Job.status == "running", Job.lease_until < now()),
+                )
+            )
+            .order_by(Job.available_at)
+            .with_for_update(skip_locked=True)
+            .limit(1)
+        )
         if not job:
             return None
         if job.attempts >= 3:
             job.status = "failed"
-            job.error = {"code": "RETRY_EXHAUSTED", "message": "Manual reconciliation required for uncertain actions"}
+            job.error = {
+                "code": "RETRY_EXHAUSTED",
+                "message": "Manual reconciliation required for uncertain actions",
+            }
             return None
         job.status, job.owner = "running", uid()
         job.lease_until = now() + timedelta(seconds=60)
         job.attempts += 1
-        return {"id": job.id, "kind": job.kind, "ticket_id": job.ticket_id, "payload": job.payload,
-                "owner": job.owner, "attempts": job.attempts}
+        return {
+            "id": job.id,
+            "kind": job.kind,
+            "ticket_id": job.ticket_id,
+            "payload": job.payload,
+            "owner": job.owner,
+            "attempts": job.attempts,
+        }
 
 
 def heartbeat(job: dict, stop: threading.Event, factory):
     while not stop.wait(10):
         try:
             with factory.begin() as session:
-                session.execute(update(Job).where(Job.id == job["id"], Job.owner == job["owner"],
-                                                  Job.status == "running")
-                                .values(lease_until=now() + timedelta(seconds=60)))
+                session.execute(
+                    update(Job)
+                    .where(Job.id == job["id"], Job.owner == job["owner"], Job.status == "running")
+                    .values(lease_until=now() + timedelta(seconds=60))
+                )
         except Exception:
             return  # Lost connectivity: final fencing check still prevents stale commits.
 
@@ -105,6 +126,7 @@ def run_once(factory=SessionLocal, handler: Callable | None = None) -> bool:
     try:
         if handler is None:
             from .pipeline import dispatch
+
             handler = dispatch
         outcome = handler(job, factory)
         complete(job, outcome, factory)
@@ -114,12 +136,28 @@ def run_once(factory=SessionLocal, handler: Callable | None = None) -> bool:
             row = session.scalar(select(Job).where(Job.id == job["id"]).with_for_update())
             if row and row.owner == job["owner"] and row.status == "running":
                 row.status = "queued" if retryable and row.attempts < 3 else "failed"
-                row.available_at = now() + timedelta(seconds=2 ** row.attempts)
+                row.available_at = now() + timedelta(seconds=2**row.attempts)
                 row.lease_until = None
                 code = "PROVIDER_UNAVAILABLE" if retryable else "JOB_FAILED"
                 if isinstance(exc, HTTPException):
                     code = str(exc.detail)
                 row.error = {"code": code, "message": "Operation failed safely; inspect the run status"}
+                if job["ticket_id"] and job["kind"] in ("triage", "draft"):
+                    session.add(
+                        Trace(
+                            ticket_id=job["ticket_id"],
+                            run_type=job["kind"],
+                            data={
+                                "job_id": job["id"],
+                                "attempt": job["attempts"],
+                                "retrieved_doc_ids": [],
+                                "tool_calls": [],
+                                "guardrail_results": ["failed_closed"],
+                                "final_status": "failed",
+                                "error_code": code,
+                            },
+                        )
+                    )
     finally:
         stop.set()
         thread.join(timeout=2)

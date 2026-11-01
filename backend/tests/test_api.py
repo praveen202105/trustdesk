@@ -40,14 +40,14 @@ def test_origin_cookie_and_pagination(client):
     sign_in(client)
     assert client.cookies.get("trustdesk_session")
     response = client.get("/api/v1/tickets?limit=3").json()
-    next_page = client.get("/api/v1/tickets", params={"cursor": response["next_cursor"], "limit":3}).json()
+    next_page = client.get("/api/v1/tickets", params={"cursor": response["next_cursor"], "limit": 3}).json()
     assert not {x["ticket_id"] for x in response["items"]} & {x["ticket_id"] for x in next_page["items"]}
     client.headers["Origin"] = "https://evil.example"
     assert client.delete("/api/v1/auth/session").status_code == 403
 
 
 def test_oversized_body_and_login_limit(client):
-    assert client.post("/api/v1/auth/session", content="x" * (256 * 1024+1)).status_code == 413
+    assert client.post("/api/v1/auth/session", content="x" * (256 * 1024 + 1)).status_code == 413
     for _ in range(10):
-        assert client.post("/api/v1/auth/session", json={"token":"wrong"}).status_code == 401
-    assert client.post("/api/v1/auth/session", json={"token":"wrong"}).status_code == 429
+        assert client.post("/api/v1/auth/session", json={"token": "wrong"}).status_code == 401
+    assert client.post("/api/v1/auth/session", json={"token": "wrong"}).status_code == 429

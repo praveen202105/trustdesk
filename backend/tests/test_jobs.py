@@ -29,8 +29,10 @@ def test_claim_is_exclusive_and_fenced(database):
 
 def test_retry_is_bounded_and_persisted(database):
     job_id = queue(database)
+
     def failed(job, factory):
         raise TransientError("temporary")
+
     for index in range(3):
         assert run_once(database, failed)
         with database.begin() as session:
@@ -43,8 +45,10 @@ def test_retry_is_bounded_and_persisted(database):
 
 def test_completion_is_atomic(database):
     job_id = queue(database)
+
     def good(job, factory):
         return Completion({"ready": True})
+
     assert run_once(database, good)
     assert not run_once(database, good)
     with database() as session:

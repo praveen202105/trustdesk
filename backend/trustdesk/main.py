@@ -18,7 +18,8 @@ app.include_router(router)
 async def protect(request: Request, call_next):
     request.state.request_id = str(uuid.uuid4())
     public = request.url.path == "/api/v1/health" or (
-        request.url.path == "/api/v1/auth/session" and request.method == "POST")
+        request.url.path == "/api/v1/auth/session" and request.method == "POST"
+    )
     try:
         if not public:
             request.state.actor = actor(request)
@@ -43,9 +44,18 @@ async def protect(request: Request, call_next):
 
 
 def error_response(request: Request, status: int, code: str, headers=None):
-    return JSONResponse(status_code=status, headers=headers,
-                        content={"error": {"code": code, "message": code.replace("_", " ").capitalize(),
-                                           "request_id": getattr(request.state, "request_id", ""), "details": {}}})
+    return JSONResponse(
+        status_code=status,
+        headers=headers,
+        content={
+            "error": {
+                "code": code,
+                "message": code.replace("_", " ").capitalize(),
+                "request_id": getattr(request.state, "request_id", ""),
+                "details": {},
+            }
+        },
+    )
 
 
 @app.exception_handler(HTTPException)

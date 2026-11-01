@@ -12,7 +12,7 @@ Evidence is recorded only after execution.
 | 05 | Policy retrieval | Complete | 14 backend tests, ruff/mypy passed; 7 approved chunks indexed; hybrid ranking, citation validation, stale-index rejection and historical return-boundary checks passed; [PR](https://github.com/praveen202105/trustdesk/pull/6); implementation `690739471a4e`; main CI run 41282087470 |
 | 06 | Triage and drafts | Complete | 21 backend tests and 2 browser E2E tests passed; frontend lint/types/build and backend lint/types passed; fixed stale ticket-response race; isolated browser-test schema verified; [PR](https://github.com/praveen202105/trustdesk/pull/7); implementation `3fc679d4a069`; main CI run 41282605145 |
 | 07 | Approval-gated refund review | Complete | 25 backend tests and 2 browser tests passed; rejection/approval guards, opposing decisions, stale-context blocking and one-effect crash recovery verified; lint/types/build/migration passed; [PR](https://github.com/praveen202105/trustdesk/pull/8); implementation `eb81f290f83b`; main CI run 41282919525 |
-| 08 | Safety and reliability | Pending | — |
+| 08 | Safety and reliability | Local checks passed; CI pending | 30 backend tests and 3 browser E2E tests passed; blocked-provider reads stayed under 2s, API idempotency replay/conflict verified, HTML escaped; runtime npm audit 0 findings; credential scan/lint/types/build passed |
 | 09 | Evaluation and release candidate | Pending | — |
 | 10 | Railway staging | Pending | — |
 | 11 | Production and handoff | Pending | — |
