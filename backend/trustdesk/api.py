@@ -112,3 +112,14 @@ def ticket_detail(ticket_id: str):
                 "triage": latest(session, ticket_id, "triage"),
                 "draft": latest(session, ticket_id, "draft"),
                 "warnings": [] if order else ["Order context is unavailable"]}
+
+
+@router.get("/jobs/{job_id}")
+def job_status(job_id: str):
+    from .models import Job
+    with SessionLocal() as session:
+        job = session.get(Job, job_id)
+        if not job:
+            raise HTTPException(404, "RESOURCE_NOT_FOUND")
+        return {"job_id": job.id, "status": job.status, "result": job.result,
+                "error": job.error, "attempts": job.attempts}

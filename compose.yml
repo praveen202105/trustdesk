@@ -20,6 +20,14 @@ services:
     depends_on:
       db: {condition: service_healthy}
     ports: ["127.0.0.1:8000:8000"]
+  worker:
+    build: {context: ., dockerfile: backend/Dockerfile}
+    command: python -m trustdesk.worker
+    environment:
+      DATABASE_URL: postgresql+psycopg://trustdesk:local-dev-only@db/trustdesk
+      MOCK_ACTION_BASE_URL: http://mock-actions:8001
+    depends_on:
+      db: {condition: service_healthy}
   web:
     build: {context: ., dockerfile: web/Dockerfile}
     environment:
