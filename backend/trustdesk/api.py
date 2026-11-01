@@ -123,3 +123,25 @@ def job_status(job_id: str):
             raise HTTPException(404, "RESOURCE_NOT_FOUND")
         return {"job_id": job.id, "status": job.status, "result": job.result,
                 "error": job.error, "attempts": job.attempts}
+
+
+@router.get("/knowledge/search")
+def knowledge_search(query: str = Query(min_length=1, max_length=2000)):
+    from .knowledge import retrieve
+    with SessionLocal() as session:
+        return {"query": query, "results": retrieve(session, query)}
+
+
+@router.get("/knowledge/documents/{document_id}")
+def knowledge_document(document_id: str, version_hash: str | None = None):
+    from .models import Document, DocumentVersion
+    with SessionLocal() as session:
+        doc = session.get(Document, document_id)
+        if not doc:
+            raise HTTPException(404, "RESOURCE_NOT_FOUND")
+        version = version_hash or doc.checksum
+        saved = session.get(DocumentVersion, document_id + ":" + version)
+        if not saved:
+            raise HTTPException(404, "RESOURCE_NOT_FOUND")
+        return {"document_id": doc.id, "title": saved.title, "content": saved.content,
+                "version_hash": version, "trusted_policy": doc.trusted_policy}
