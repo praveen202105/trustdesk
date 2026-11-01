@@ -83,4 +83,8 @@ V1 live drafts are restricted to reviewed policy templates; unreviewed paraphras
 
 ## Deployment status
 
-Development phases 0–9 passed local checks and GitHub PR/main CI. The user selected free hosting; [Render + Neon deployment](free-deployment.md) is in progress. No hosted acceptance or production release is claimed until its actual checks pass. [Railway configuration](deployment-runbook.md) remains an optional paid-hosting alternative.
+[Live TrustDesk demo](https://trustdesk-praveen202105.onrender.com) · [Staging](https://trustdesk-staging-praveen202105.onrender.com). Both use Render Free and separate Neon Free PostgreSQL/pgvector projects. AI defaults to clearly labeled mock mode. Hosted access is protected by a private demo token; the local example token does not grant hosted access.
+
+Release `v1.0.0` uses staging-tested application commit `427966047682ab090656426a8af84617af13b3ab`. Production is pinned to `release/v1.0.0` with automatic deployments disabled. Later main commits may contain verification documents without changing the deployed runtime.
+
+41 backend tests, 3 supervisor tests, 4 browser scenarios per hosted environment, supplied mock evaluation 8/8, restart/session persistence, expired-lease recovery, environment isolation, backup restoration and staging rollback passed. See [actual release evidence](reports/release-verification.json) and [free deployment operations](free-deployment.md). Free instances sleep while idle and have quota limits; this is a demo deployment.

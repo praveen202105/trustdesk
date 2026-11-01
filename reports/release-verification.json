@@ -1,0 +1,38 @@
+{
+  "version": "v1.0.0",
+  "application_commit": "427966047682ab090656426a8af84617af13b3ab",
+  "production": {
+    "url": "https://trustdesk-praveen202105.onrender.com",
+    "render_service_id": "srv-dbjjvnfb9u1s73e8q920",
+    "neon_project_id": "patient-band-83922454",
+    "plan": "free",
+    "source_branch": "release/v1.0.0",
+    "automatic_deployment": false
+  },
+  "staging": {
+    "url": "https://trustdesk-staging-praveen202105.onrender.com",
+    "render_service_id": "srv-dbjjncg473hc73a2b1u0",
+    "neon_project_id": "polished-wildflower-00057496",
+    "plan": "free"
+  },
+  "validation": {
+    "backend_tests": 41,
+    "supervisor_tests": 3,
+    "browser_tests_per_environment": 4,
+    "provided_mock_evaluations_passed": 8,
+    "provided_mock_evaluations_total": 8,
+    "restart_and_session_persistence": true,
+    "expired_lease_recovery": true,
+    "environment_isolation": true,
+    "backup_restores": true,
+    "staging_rollback_rehearsal": true
+  },
+  "ai_mode": "mock",
+  "limitations": [
+    "Free host idle sleep and monthly quotas; workers pause while asleep.",
+    "No live-provider quality claim.",
+    "Demo shared-token authentication is not full RBAC; PII masking is heuristic.",
+    "Development image install reported 16 moderate advisories; production dependency audit passed with 0 findings."
+  ],
+  "note": "Runtime commit is deliberately pinned to the staging-tested revision. Later documentation/evidence commits on main are not automatically deployed."
+}

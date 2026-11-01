@@ -1,0 +1,14 @@
+{
+  "profile": "production",
+  "service_id": "srv-dbjjvnfb9u1s73e8q920",
+  "revision": "427966047682ab090656426a8af84617af13b3ab",
+  "expired_lease_recovery": {
+    "job_id": "266b0214-de69-4e56-b504-02ac872dcf12",
+    "status": "succeeded",
+    "attempts": 2,
+    "expired_owner_replaced": true
+  },
+  "mock_effect_count": 1,
+  "secure_httponly_samesite_strict_cookie": true,
+  "foreign_origin_rejected": true
+}

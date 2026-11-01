@@ -1,0 +1,22 @@
+{
+  "base_url": "https://trustdesk-praveen202105.onrender.com",
+  "checks": [
+    "authenticated_ticket_list",
+    "linked_context",
+    "background_triage",
+    "cited_draft",
+    "approved_idempotent_mock_review",
+    "all_supplied_mock_cases",
+    "logout_protects_workspace"
+  ],
+  "health": {
+    "status": "ok",
+    "mode": "mock",
+    "revision": "427966047682ab090656426a8af84617af13b3ab"
+  },
+  "proposal_id": "c5381d37-26ea-4494-9e75-c24c1d8d4d07",
+  "external_review_id": "review_4af993b9-7e29-4cd5-a9ce-77998155828f",
+  "evaluation_id": "18129434-819b-45f4-ae7e-8750ab9fbbaf",
+  "evaluation_passed": 8,
+  "evaluation_total": 8
+}

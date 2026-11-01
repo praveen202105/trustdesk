@@ -14,7 +14,7 @@ Each phase is gated by implementation → relevant local tests/regressions → c
 | 07 | Human-approved action | Proposal, human decision, idempotent mock effect | Zero unapproved effects, decision conflicts, crash-after-success replay |
 | 08 | Safety | Injection/PII protection, request limits, errors and tool permissions | Adversarial cases, HTML escaping, blocked-provider responsiveness |
 | 09 | Release candidate | Evaluation child jobs, reports, runtime docs and containers | Full regression, all supplied cases, image builds and Compose smoke |
-| 10 | Staging | Railway private services, secrets, migration/seed and public web | Hosted smoke, worker/restart persistence, logs and rollback rehearsal |
+| 10 | Staging | Render Free supervised processes, private ports, Neon Free data, secrets and explicit migration/seed | Hosted smoke, worker/restart persistence, logs and rollback rehearsal |
 | 11 | Production | Promote tested revision, tag, docs and handoff | Production smoke, version/persistence checks and final evidence |
 
 Actual commit SHAs, PRs, test results and completion status belong in [phase-progress.md](phase-progress.md). Deployment-specific evidence belongs in [deployment-runbook.md](deployment-runbook.md). See [architecture](architecture.md), [APIs](api-contracts.md), [edge cases](edge-cases.md) and [testing](testing-and-evaluation.md) for behavior contracts.

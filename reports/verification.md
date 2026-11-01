@@ -35,3 +35,9 @@ Render Free staging is live at https://trustdesk-staging-praveen202105.onrender.
 ## Staging acceptance gate complete
 
 Candidate 427966047682ab090656426a8af84617af13b3ab passed main CI 41311034950 and actual staged HTTP/evaluation tests, rollback to e4ce9068e13f188cadba0c1d2700c3a136ee6625, and restoration to the candidate. The same review ID and authenticated session survived. Final database check: 68 successful jobs, none queued/running/failed, exactly one mock effect; PG17/vector 0.8.0/schema 004. Recent log scan passed after final restore. The rollback used compatible documentation-only revisions, not a destructive database downgrade. Production promotion remains pending.
+
+## Production release verification
+
+Actual production URL: https://trustdesk-praveen202105.onrender.com. The deployed revision matches staged candidate 427966047682ab090656426a8af84617af13b3ab. Four production browser tests passed in 27.3 seconds; full HTTP workflow/evaluation passed 8/8 before and after instance replacement. The same signed session, proposal and downstream review survived; exactly one effect and 35 successful jobs remained, none failed/running/queued. Hosted expired-lease recovery completed on attempt two. Secure cookie flags, foreign-Origin rejection and staging-cookie/token rejection passed. Render plan free, pinned release source branch, separate database and disabled automatic deployment verified. Focused recent-log secret scan passed; PG17/vector 0.8.0/schema 004 and expected source counts verified. Production custom backup restored successfully to an isolated local database.
+
+The runtime release is v1.0.0 at application commit 427966047682ab090656426a8af84617af13b3ab. Documentation-only commits can follow it on main. See release-verification.json and production JSON reports. All model/evaluation results are mock-mode results; no live AI quality or always-on availability claim is made.

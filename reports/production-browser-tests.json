@@ -1,0 +1,14 @@
+{
+  "base_url": "https://trustdesk-praveen202105.onrender.com",
+  "revision": "427966047682ab090656426a8af84617af13b3ab",
+  "passed": 4,
+  "failed": 0,
+  "duration_seconds": 27.3,
+  "scenarios": [
+    "login/customer context/search/signout",
+    "triage/cited draft/policy viewer/human approval",
+    "customer HTML escaped",
+    "provided evaluation visible"
+  ],
+  "runner": "Existing web/tests/workspace.spec.ts with hosted baseURL; private token in process environment."
+}

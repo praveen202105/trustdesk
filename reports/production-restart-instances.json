@@ -1,0 +1,18 @@
+{
+  "profile": "production",
+  "service_id": "srv-dbjjvnfb9u1s73e8q920",
+  "source_commit": "427966047682ab090656426a8af84617af13b3ab",
+  "before": [
+    {
+      "createdAt": "2026-11-01T13:36:32Z",
+      "id": "srv-dbjjvnfb9u1s73e8q920-78msl"
+    }
+  ],
+  "after": [
+    {
+      "createdAt": "2026-11-01T13:38:51Z",
+      "id": "srv-dbjjvnfb9u1s73e8q920-56qmp"
+    }
+  ],
+  "instance_change_observed": true
+}
