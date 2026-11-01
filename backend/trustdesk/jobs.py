@@ -21,6 +21,7 @@ class TransientError(Exception):
 class Completion:
     result: dict[str, Any] = field(default_factory=dict)
     persist: Callable | None = None
+    defer_seconds: int = 0
 
 
 def advisory(session, value: str):
@@ -65,7 +66,7 @@ def claim(factory=SessionLocal) -> dict | None:
                     and_(Job.status == "running", Job.lease_until < now()),
                 )
             )
-            .order_by(Job.available_at)
+            .order_by(Job.available_at, Job.created_at, Job.id)
             .with_for_update(skip_locked=True)
             .limit(1)
         )
@@ -111,6 +112,12 @@ def complete(job: dict, outcome: Completion, factory=SessionLocal) -> bool:
             return False
         if outcome.persist:
             outcome.persist(session)
+        if outcome.defer_seconds:
+            row.status = "queued"
+            row.available_at = now() + timedelta(seconds=outcome.defer_seconds)
+            row.attempts -= 1
+            row.lease_until = None
+            return True
         row.result, row.status, row.error = outcome.result, "succeeded", None
         row.lease_until = None
         return True

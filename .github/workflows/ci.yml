@@ -63,3 +63,9 @@ jobs:
         working-directory: backend
       - run: npx playwright install --with-deps chromium && npm run test:e2e
         working-directory: web
+  containers:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: docker build -f backend/Dockerfile -t trustdesk-api:ci .
+      - run: docker build -f web/Dockerfile -t trustdesk-web:ci .

@@ -51,3 +51,8 @@ def test_oversized_body_and_login_limit(client):
     for _ in range(10):
         assert client.post("/api/v1/auth/session", json={"token": "wrong"}).status_code == 401
     assert client.post("/api/v1/auth/session", json={"token": "wrong"}).status_code == 429
+
+
+def test_invalid_cursor_is_rejected(client):
+    sign_in(client)
+    assert client.get("/api/v1/tickets?cursor=!!!!").status_code == 422

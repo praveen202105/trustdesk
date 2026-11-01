@@ -12,12 +12,14 @@ from .models import (
     Artifact,
     Customer,
     Document,
+    Job,
     Order,
     Proposal,
     Ticket,
     ToolCall,
     ToolDefinition,
     Trace,
+    now,
     uid,
 )
 from .policy import action_arguments, context_for, context_hash, decision
@@ -152,6 +154,18 @@ def execute_remote(arguments: dict) -> dict:
         raise TransientError("Action outcome unknown; reconcile using original key") from exc
 
 
+def owns_job(session, job: dict) -> bool:
+    if not job.get("id"):
+        return False
+    current = session.scalar(select(Job).where(Job.id == job["id"]).with_for_update())
+    return bool(
+        current
+        and current.owner == job.get("owner")
+        and current.status == "running"
+        and current.lease_until > now()
+    )
+
+
 def execute(job, factory) -> Completion:
     proposal_id = job["payload"]["proposal_id"]
     try:
@@ -198,14 +212,17 @@ def execute(job, factory) -> Completion:
             result = execute_remote(proposal.arguments)
     except HTTPException:
         with factory.begin() as session:
-            proposal = session.get(Proposal, proposal_id)
-            if proposal and proposal.state in ("approved", "executing"):
-                proposal.state = "blocked"
+            if owns_job(session, job):
+                proposal = session.get(Proposal, proposal_id)
+                if proposal and proposal.state in ("approved", "executing"):
+                    proposal.state = "blocked"
         raise
     except httpx.HTTPStatusError:
         with factory.begin() as session:
-            proposal = session.get(Proposal, proposal_id)
-            proposal.state = "failed"
+            if owns_job(session, job):
+                proposal = session.get(Proposal, proposal_id)
+                if proposal and proposal.state in ("approved", "executing"):
+                    proposal.state = "failed"
         raise HTTPException(502, "TOOL_EXECUTION_FAILED") from None
 
     def persist(session):

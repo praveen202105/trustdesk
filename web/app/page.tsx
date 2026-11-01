@@ -14,6 +14,7 @@ import {
 } from "lucide-react";
 import type { Detail, Ticket } from "./types";
 
+import Evaluations from "./evaluations";
 import Assistant from "./assistant";
 import { api } from "./api-client";
 
@@ -21,6 +22,7 @@ export default function Home() {
   const [authenticated, setAuthenticated] = useState(false),
     [token, setToken] = useState(""),
     [error, setError] = useState("");
+  const [view, setView] = useState<"inbox" | "evaluations">("inbox");
   const selection = useRef(0),
     activeTicket = useRef("");
   const [mode, setMode] = useState("mock");
@@ -153,13 +155,15 @@ export default function Home() {
           </span>
         </div>
         <div className="workspace-label">WORKSPACE</div>
-        <button className="nav active">
+        <button
+          className={"nav " + (view === "inbox" ? "active" : "")}
+          onClick={() => setView("inbox")}
+        >
           <Inbox size={18} /> Inbox <b>{tickets.length}</b>
         </button>
         <button
-          className="nav"
-          disabled
-          title="Available after evaluation implementation"
+          className={"nav " + (view === "evaluations" ? "active" : "")}
+          onClick={() => setView("evaluations")}
         >
           <BarChart3 size={18} /> Evaluations
         </button>
@@ -192,7 +196,8 @@ export default function Home() {
       <div className="workspace">
         <header className="topbar">
           <span>
-            Workspace <ChevronRight size={13} /> <strong>Inbox</strong>
+            Workspace <ChevronRight size={13} />{" "}
+            <strong>{view === "inbox" ? "Inbox" : "Evaluations"}</strong>
           </span>
           <div className="mode">
             <i /> {mode === "mock" ? "MOCK AI" : "LIVE AI"}{" "}
@@ -202,8 +207,16 @@ export default function Home() {
         <div className="page-heading">
           <div>
             <span className="eyebrow">SUPPORT OPERATIONS</span>
-            <h1>Your inbox, in focus</h1>
-            <p>Find the right answer. Keep the human touch.</p>
+            <h1>
+              {view === "inbox"
+                ? "Your inbox, in focus"
+                : "Measure what matters"}
+            </h1>
+            <p>
+              {view === "inbox"
+                ? "Find the right answer. Keep the human touch."
+                : "Transparent results. Safer decisions."}
+            </p>
           </div>
           <div className="stat">
             <b>{tickets.length}</b>
@@ -215,7 +228,11 @@ export default function Home() {
             {error}
           </div>
         )}
-        <div className="inbox">
+        {view === "evaluations" && <Evaluations />}
+        <div
+          className="inbox"
+          style={{ display: view === "inbox" ? undefined : "none" }}
+        >
           <section className="ticket-list">
             <div className="list-title">
               All tickets <span>{visible.length}</span>

@@ -46,3 +46,7 @@ Set API JSON body limit to 256 KiB, source document limit to 5 MiB and draft len
 ## Implementation roadmap update
 
 Follow [phase progress](phase-progress.md) and [source provenance](source-provenance.md). Verified capstone requirements override earlier illustrative examples. Only refund review is executable; its payload includes amount and idempotency_key. Mock AI results do not establish live-model quality.
+
+## Execution evidence
+
+See [verification](reports/verification.md) for measured checks and [tests](testing-and-evaluation.md) for requirement mapping. Provider input masking and instruction detection use heuristics; this list is not a claim of comprehensive adversarial robustness. Exactly-once behavior requires the downstream idempotency contract.

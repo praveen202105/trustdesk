@@ -89,3 +89,26 @@ test("customer HTML renders as text", async ({ page }) => {
     await page.evaluate(() => Reflect.get(window, "trustdeskXss")),
   ).toBeUndefined();
 });
+
+test("provided evaluation suite is visible", async ({ page }) => {
+  test.setTimeout(60000);
+  await page.goto("/");
+  await page
+    .getByLabel("Access token")
+    .fill(process.env.DEMO_LOGIN_TOKEN || "local-demo-only");
+  await page.getByRole("button", { name: "Open workspace" }).click();
+  await page.getByRole("button", { name: "Evaluations", exact: true }).click();
+  await page
+    .getByRole("button", { name: "Run evaluations", exact: true })
+    .click();
+  await expect(page.getByRole("heading", { name: "Case results" })).toBeVisible(
+    { timeout: 45000 },
+  );
+  await expect(
+    page.getByRole("cell", { name: "eval_008", exact: true }),
+  ).toBeVisible();
+  await page.screenshot({
+    path: "test-results/evaluations.png",
+    fullPage: true,
+  });
+});

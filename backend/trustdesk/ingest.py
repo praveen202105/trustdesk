@@ -84,6 +84,30 @@ def validate(data: dict[str, Any]) -> None:
 
 
 def ingest(session: Session, path: Path) -> dict[str, int]:
+    from datetime import timedelta
+
+    from sqlalchemy import select
+
+    from .jobs import advisory
+    from .models import EvaluationRun, Job, now
+
+    advisory(session, "source-import")
+    active_jobs = session.scalar(
+        select(Job.id)
+        .where(Job.status.in_(["queued", "running"]), Job.kind.in_(["evaluation", "eval_case"]))
+        .limit(1)
+    )
+    active_sync = session.scalar(
+        select(EvaluationRun.id)
+        .where(
+            EvaluationRun.job_id.is_(None),
+            EvaluationRun.status == "running",
+            EvaluationRun.created_at > now() - timedelta(minutes=30),
+        )
+        .limit(1)
+    )
+    if active_jobs or active_sync:
+        raise ValueError("Import blocked while an evaluation is active")
     data = source_data(path)
     validate(data)  # Validate all groups before writing any rows.
     for model, group, key in (
