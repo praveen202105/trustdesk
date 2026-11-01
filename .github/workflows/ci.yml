@@ -35,6 +35,17 @@ jobs:
         working-directory: backend
   frontend:
     runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: pgvector/pgvector:pg17
+        env:
+          POSTGRES_USER: trustdesk
+          POSTGRES_PASSWORD: local-dev-only
+          POSTGRES_DB: trustdesk
+        ports: ['5438:5432']
+        options: >-
+          --health-cmd "pg_isready -U trustdesk"
+          --health-interval 3s --health-timeout 3s --health-retries 20
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -45,4 +56,9 @@ jobs:
       - run: npm ci
         working-directory: web
       - run: npm run lint && npm run typecheck && npm run build
+        working-directory: web
+      - uses: astral-sh/setup-uv@v6
+      - run: uv sync --frozen && uv run alembic upgrade head && uv run python -m trustdesk.cli import-data
+        working-directory: backend
+      - run: npx playwright install --with-deps chromium && npm run test:e2e
         working-directory: web
