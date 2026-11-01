@@ -80,3 +80,7 @@ Set `AI_PROVIDER=compatible`, `AI_BASE_URL`, `AI_MODEL` and `AI_API_KEY` for a C
 Customer emails, long numeric payment strings, labeled credentials and configured secrets are masked before live-provider input. Names/tracking numbers are omitted. This is heuristic protection, not a comprehensive PII classifier. Raw seed messages remain unchanged in the audit store.
 
 V1 live drafts are restricted to reviewed policy templates; unreviewed paraphrases escalate. Full RBAC, multi-tenancy, actual commerce/payment integrations and production-scale load certification are outside this capstone. See the verification report for current limitations and dependency-audit evidence.
+
+## Deployment status
+
+Development phases 0–9 passed local checks and GitHub PR/main CI. Railway provisioning is blocked by an expired account trial; no hosted URL or production release is claimed. See [deployment runbook](deployment-runbook.md) for prepared service configuration and remaining acceptance gates.

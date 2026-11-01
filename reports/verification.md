@@ -19,3 +19,7 @@ Measured locally on 2026-11-01; Railway deployment remains pending Phase 10.
 ## Limits
 
 Default AI and embeddings are deterministic mocks. No real-provider quality, paid API usage, or production deployment is claimed by this report. Citation-reference validity and heuristic requirement coverage do not prove semantic grounding. PII masking is heuristic. Only start_refund_review executes, against an isolated mock service; no money moves. Demo shared-token sessions are not production RBAC. FastAPI test client emits one upstream deprecation warning; tests pass.
+
+## Railway preflight
+
+Authentication succeeded. Project creation was rejected on 2026-11-01 because the workspace trial expired. Read-back found no TrustDesk project. No billing change or hosted verification occurred. Staging and production remain pending.
