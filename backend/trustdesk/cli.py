@@ -17,8 +17,10 @@ def main():
             result = ingest(session, Path(args.directory))
         else:
             from .knowledge import index_knowledge
+
             result = {"indexed_chunks": index_knowledge(session)}
     print(json.dumps(result, indent=2))
+
 
 if __name__ == "__main__":
     main()

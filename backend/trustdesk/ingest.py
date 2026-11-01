@@ -15,9 +15,13 @@ def checksum(value: Any) -> str:
 
 
 def source_data(path: Path) -> dict[str, Any]:
-    data = {name: json.loads((path / f"{name}.json").read_text()) for name in
-            ("customers", "orders", "tickets", "tool_actions")}
-    data["eval_cases"] = [json.loads(line) for line in (path / "eval_cases.jsonl").read_text().splitlines() if line.strip()]
+    data = {
+        name: json.loads((path / f"{name}.json").read_text())
+        for name in ("customers", "orders", "tickets", "tool_actions")
+    }
+    data["eval_cases"] = [
+        json.loads(line) for line in (path / "eval_cases.jsonl").read_text().splitlines() if line.strip()
+    ]
     data["documents"] = []
     for p in sorted((path / "knowledge_base").glob("*.md")):
         content = p.read_text()
@@ -27,14 +31,26 @@ def source_data(path: Path) -> dict[str, Any]:
         version = re.search(r"Version: (.+)", content)
         if not doc_id or not version:
             raise ValueError("Knowledge document metadata missing")
-        data["documents"].append({"id": doc_id[1].strip(), "version": version[1].strip(),
-                                  "title": content.splitlines()[0].lstrip("# "), "content": content})
+        data["documents"].append(
+            {
+                "id": doc_id[1].strip(),
+                "version": version[1].strip(),
+                "title": content.splitlines()[0].lstrip("# "),
+                "content": content,
+            }
+        )
     return data
 
 
 def validate(data: dict[str, Any]) -> None:
-    keys = {"customers": "customer_id", "orders": "order_id", "tickets": "ticket_id",
-            "tool_actions": "tool_name", "eval_cases": "case_id", "documents": "id"}
+    keys = {
+        "customers": "customer_id",
+        "orders": "order_id",
+        "tickets": "ticket_id",
+        "tool_actions": "tool_name",
+        "eval_cases": "case_id",
+        "documents": "id",
+    }
     for group, key in keys.items():
         ids = [row[key] for row in data[group]]
         if len(ids) != len(set(ids)):
@@ -44,6 +60,14 @@ def validate(data: dict[str, Any]) -> None:
     for order in orders.values():
         if order["customer_id"] not in customers or order["total"] < 0:
             raise ValueError("Invalid order customer or amount")
+    for tool in data["tool_actions"]:
+        if (
+            not isinstance(tool.get("required_fields"), list)
+            or not isinstance(tool.get("allowed_categories"), list)
+            or not isinstance(tool.get("requires_human_approval"), bool)
+            or tool.get("risk_level") not in ("low", "medium", "high")
+        ):
+            raise ValueError("Invalid tool catalog schema")
     for ticket in data["tickets"]:
         dt = datetime.fromisoformat(ticket["created_at"])
         if not dt.tzinfo or ticket["customer_id"] not in customers or not ticket["body"].strip():
@@ -62,26 +86,46 @@ def validate(data: dict[str, Any]) -> None:
 def ingest(session: Session, path: Path) -> dict[str, int]:
     data = source_data(path)
     validate(data)  # Validate all groups before writing any rows.
-    for model, group, key in ((Customer, "customers", "customer_id"), (Order, "orders", "order_id"),
-                              (Ticket, "tickets", "ticket_id")):
+    for model, group, key in (
+        (Customer, "customers", "customer_id"),
+        (Order, "orders", "order_id"),
+        (Ticket, "tickets", "ticket_id"),
+    ):
         for row in data[group]:
             safe = {k: v for k, v in row.items() if not k.startswith("expected_")}
             values: dict[str, Any] = {"id": row[key], "data": safe, "checksum": checksum(safe)}
             if model in (Order, Ticket):
                 values["customer_id"] = row["customer_id"]
             if model is Ticket:
-                values.update(order_id=row.get("order_id"), created_at=datetime.fromisoformat(row["created_at"]))
+                values.update(
+                    order_id=row.get("order_id"), created_at=datetime.fromisoformat(row["created_at"])
+                )
             session.merge(model(**values))
         session.flush()
     for doc in data["documents"]:
         digest = checksum(doc["content"])
         # Trust is server policy metadata, not a command in retrieved text.
         approved = json.loads((Path(__file__).parent / "approved_policies.json").read_text())
-        session.merge(Document(id=doc["id"], title=doc["title"], content=doc["content"], checksum=digest,
-                               version=doc["version"], trusted_policy=approved.get(doc["id"]) == digest))
+        session.merge(
+            Document(
+                id=doc["id"],
+                title=doc["title"],
+                content=doc["content"],
+                checksum=digest,
+                version=doc["version"],
+                trusted_policy=approved.get(doc["id"]) == digest,
+            )
+        )
         session.flush()
-        session.merge(DocumentVersion(id=doc["id"] + ":" + digest, document_id=doc["id"],
-                                      checksum=digest, content=doc["content"], title=doc["title"]))
+        session.merge(
+            DocumentVersion(
+                id=doc["id"] + ":" + digest,
+                document_id=doc["id"],
+                checksum=digest,
+                content=doc["content"],
+                title=doc["title"],
+            )
+        )
     for row in data["tool_actions"]:
         session.merge(ToolDefinition(id=row["tool_name"], data=row))
     for row in data["eval_cases"]:

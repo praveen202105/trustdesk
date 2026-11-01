@@ -24,17 +24,28 @@ from .policy import action_arguments, context_for, context_hash, decision
 
 
 def proposal_json(proposal: Proposal) -> dict:
-    return {"proposal_id": proposal.id, "ticket_id": proposal.ticket_id, "action_type": proposal.action_type,
-            "arguments": proposal.arguments, "arguments_hash": proposal.arguments_hash, "state": proposal.state,
-            "evidence_document_ids": proposal.evidence_document_ids,
-            "execution_job_id": proposal.execution_job_id, "result": proposal.result}
+    return {
+        "proposal_id": proposal.id,
+        "ticket_id": proposal.ticket_id,
+        "action_type": proposal.action_type,
+        "arguments": proposal.arguments,
+        "arguments_hash": proposal.arguments_hash,
+        "state": proposal.state,
+        "evidence_document_ids": proposal.evidence_document_ids,
+        "execution_job_id": proposal.execution_job_id,
+        "result": proposal.result,
+    }
 
 
 def validate_catalog(session, arguments: dict, category: str):
     catalog = session.get(ToolDefinition, "start_refund_review")
-    if (not catalog or category not in catalog.data["allowed_categories"] or
-            not catalog.data["requires_human_approval"] or
-            any(field not in arguments for field in catalog.data["required_fields"])):
+    if (
+        not catalog
+        or category not in catalog.data["allowed_categories"]
+        or not catalog.data["requires_human_approval"]
+        or catalog.data["risk_level"] != "medium"
+        or any(field not in arguments for field in catalog.data["required_fields"])
+    ):
         raise HTTPException(403, "ACTION_NOT_ALLOWED")
 
 
@@ -48,13 +59,20 @@ def propose(session, ticket_id: str, draft_id: str) -> dict:
         raise HTTPException(409, "STALE_CONTEXT")
     rules = decision(context)
     arguments = action_arguments(context, rules)
-    if (not arguments or draft.data["status"] != "ready_for_review" or
-            "start_refund_review" not in draft.data["recommended_actions"]):
+    if (
+        not arguments
+        or draft.data["status"] != "ready_for_review"
+        or "start_refund_review" not in draft.data["recommended_actions"]
+    ):
         raise HTTPException(422, "EVIDENCE_INSUFFICIENT")
     advisory(session, "refund-review:" + ticket_id + ":" + arguments["order_id"])
-    existing = session.scalar(select(Proposal).where(Proposal.ticket_id == ticket_id,
-                               Proposal.order_id == arguments["order_id"],
-                               Proposal.state.in_(["proposed", "approved", "executing", "succeeded"])))
+    existing = session.scalar(
+        select(Proposal).where(
+            Proposal.ticket_id == ticket_id,
+            Proposal.order_id == arguments["order_id"],
+            Proposal.state.in_(["proposed", "approved", "executing", "succeeded"]),
+        )
+    )
     if existing:
         if existing.draft_id == draft_id:
             return proposal_json(existing)
@@ -64,15 +82,24 @@ def propose(session, ticket_id: str, draft_id: str) -> dict:
     proposal_id = uid()
     arguments["idempotency_key"] = "refund-review:" + proposal_id
     validate_catalog(session, arguments, rules["category"])
-    proposal = Proposal(id=proposal_id, ticket_id=ticket_id, order_id=arguments["order_id"], draft_id=draft_id,
-                        arguments=arguments, arguments_hash=checksum(arguments), context_hash=digest,
-                        evidence_document_ids=[rules["policy_document"]])
+    proposal = Proposal(
+        id=proposal_id,
+        ticket_id=ticket_id,
+        order_id=arguments["order_id"],
+        draft_id=draft_id,
+        arguments=arguments,
+        arguments_hash=checksum(arguments),
+        context_hash=digest,
+        evidence_document_ids=[rules["policy_document"]],
+    )
     session.add(proposal)
     session.flush()
     return proposal_json(proposal)
 
 
-def decide(session, proposal_id: str, value: Literal["approved", "rejected"], reason: str, actor: str) -> dict:
+def decide(
+    session, proposal_id: str, value: Literal["approved", "rejected"], reason: str, actor: str
+) -> dict:
     proposal = session.scalar(select(Proposal).where(Proposal.id == proposal_id).with_for_update())
     if not proposal:
         raise HTTPException(404, "RESOURCE_NOT_FOUND")
@@ -85,8 +112,15 @@ def decide(session, proposal_id: str, value: Literal["approved", "rejected"], re
         raise HTTPException(409, "INVALID_STATE")
     if context_hash(context_for(session, proposal.ticket_id)) != proposal.context_hash:
         raise HTTPException(409, "STALE_CONTEXT")
-    session.add(Approval(proposal_id=proposal.id, actor=actor, decision=value, reason=reason,
-                         arguments_hash=proposal.arguments_hash))
+    session.add(
+        Approval(
+            proposal_id=proposal.id,
+            actor=actor,
+            decision=value,
+            reason=reason,
+            arguments_hash=proposal.arguments_hash,
+        )
+    )
     proposal.state = value
     if value == "approved":
         submitted = enqueue(session, "execute_action", proposal.ticket_id, {"proposal_id": proposal.id})
@@ -98,9 +132,15 @@ def decide(session, proposal_id: str, value: Literal["approved", "rejected"], re
 
 def execute_remote(arguments: dict) -> dict:
     try:
-        response = httpx.post(settings.mock_action_base_url.rstrip("/") + "/internal/refund-reviews",
-                              headers={"X-Action-Secret": settings.mock_action_secret,
-                                       "Idempotency-Key": arguments["idempotency_key"]}, json=arguments, timeout=10)
+        response = httpx.post(
+            settings.mock_action_base_url.rstrip("/") + "/internal/refund-reviews",
+            headers={
+                "X-Action-Secret": settings.mock_action_secret,
+                "Idempotency-Key": arguments["idempotency_key"],
+            },
+            json=arguments,
+            timeout=10,
+        )
         if response.status_code == 429 or response.status_code >= 500:
             raise TransientError("Mock action service temporarily unavailable")
         response.raise_for_status()
@@ -120,8 +160,12 @@ def execute(job, factory) -> Completion:
             if not proposal or proposal.state not in ("approved", "executing", "succeeded"):
                 raise HTTPException(403, "APPROVAL_REQUIRED")
             approval = session.scalar(select(Approval).where(Approval.proposal_id == proposal_id))
-            if (not approval or approval.decision != "approved" or
-                    approval.arguments_hash != proposal.arguments_hash or checksum(proposal.arguments) != proposal.arguments_hash):
+            if (
+                not approval
+                or approval.decision != "approved"
+                or approval.arguments_hash != proposal.arguments_hash
+                or checksum(proposal.arguments) != proposal.arguments_hash
+            ):
                 raise HTTPException(403, "APPROVAL_REQUIRED")
             if proposal.state == "succeeded":
                 return Completion(proposal.result or {})
@@ -132,10 +176,17 @@ def execute(job, factory) -> Completion:
         with factory.begin() as session:
             proposal = session.scalar(select(Proposal).where(Proposal.id == proposal_id).with_for_update())
             # Hold source-row read locks over the external call so imports cannot race policy revalidation.
-            session.scalars(select(Ticket).where(Ticket.id == proposal.ticket_id).with_for_update(read=True)).all()
-            session.scalars(select(Order).where(Order.id == proposal.order_id).with_for_update(read=True)).all()
-            session.scalars(select(Customer).where(Customer.id == session.get(Ticket, proposal.ticket_id).customer_id)
-                            .with_for_update(read=True)).all()
+            session.scalars(
+                select(Ticket).where(Ticket.id == proposal.ticket_id).with_for_update(read=True)
+            ).all()
+            session.scalars(
+                select(Order).where(Order.id == proposal.order_id).with_for_update(read=True)
+            ).all()
+            session.scalars(
+                select(Customer)
+                .where(Customer.id == session.get(Ticket, proposal.ticket_id).customer_id)
+                .with_for_update(read=True)
+            ).all()
             session.scalars(select(Document).with_for_update(read=True)).all()
             context = context_for(session, proposal.ticket_id)
             if context_hash(context) != proposal.context_hash:
@@ -156,13 +207,25 @@ def execute(job, factory) -> Completion:
             proposal = session.get(Proposal, proposal_id)
             proposal.state = "failed"
         raise HTTPException(502, "TOOL_EXECUTION_FAILED") from None
+
     def persist(session):
         proposal = session.get(Proposal, proposal_id)
         proposal.state, proposal.result = "succeeded", result
         call = session.get(ToolCall, proposal.arguments["idempotency_key"])
         call.status, call.result = "succeeded", result
-        session.add(Trace(ticket_id=proposal.ticket_id, run_type="tool_execution", data={
-            "retrieved_doc_ids": proposal.evidence_document_ids,
-            "tool_calls": [{"tool_name": "start_refund_review", "proposal_id": proposal.id, "result": result}],
-            "guardrail_results": ["approval_verified", "policy_revalidated", "idempotency_enforced"], "final_status": "succeeded"}))
+        session.add(
+            Trace(
+                ticket_id=proposal.ticket_id,
+                run_type="tool_execution",
+                data={
+                    "retrieved_doc_ids": proposal.evidence_document_ids,
+                    "tool_calls": [
+                        {"tool_name": "start_refund_review", "proposal_id": proposal.id, "result": result}
+                    ],
+                    "guardrail_results": ["approval_verified", "policy_revalidated", "idempotency_enforced"],
+                    "final_status": "succeeded",
+                },
+            )
+        )
+
     return Completion(result, persist)
